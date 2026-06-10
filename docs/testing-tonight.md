@@ -28,6 +28,10 @@ curl http://127.0.0.1:8787/api/providers/status
 - `.txt` and `.md` upload works.
 - Unsupported upload types show a clear warning.
 - Parser identifies SFX, music, legal, CTA, announcer, character, and brand mnemonic lines.
+- Parsed lines can be edited directly.
+- Line type can be manually retagged.
+- Voice role can be manually assigned to voice lines.
+- Performance notes can be adjusted line by line.
 - Timing updates and warnings are understandable.
 - Legal lines show clear performance guidance.
 - Craft Quality tab shows overall score, score band, sub-scores, suggested actions, and recommendation.

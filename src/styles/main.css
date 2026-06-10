@@ -303,6 +303,25 @@ label {
   margin: 0.25rem 0;
 }
 
+.line-controls {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(140px, 0.65fr);
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.line-textarea {
+  min-height: 72px;
+  line-height: 1.4;
+  margin: 0.45rem 0;
+}
+
+.line-note {
+  min-height: 58px;
+  margin-top: 0.5rem;
+  color: var(--muted);
+}
+
 .script-line small,
 .voice-card small,
 .list-row span,
@@ -515,6 +534,7 @@ input[type="range"] {
   .home-grid,
   .script-layout,
   .form-grid,
+  .line-controls,
   .slider-grid,
   .card-grid {
     grid-template-columns: 1fr;

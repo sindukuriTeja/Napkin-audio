@@ -25,10 +25,24 @@ import {
 } from "./export/exportPackage";
 import { assignLineTimings, totalDuration, wordsPerSecond } from "./lib/timing";
 import { MockVoiceProvider } from "./services/voiceProviders";
-import type { ApprovalStatus, Brief, Project } from "./types/models";
+import type { ApprovalStatus, Brief, Project, ScriptLineType } from "./types/models";
 
 const tabs = ["Home", "Brief", "Script", "Voices", "Sound", "Mix", "Craft Quality", "Export", "Craft Memory"] as const;
 type Tab = (typeof tabs)[number];
+
+const scriptLineTypes: ScriptLineType[] = [
+  "voiceover",
+  "announcer",
+  "character",
+  "dialogue",
+  "sound-effect",
+  "music",
+  "pause",
+  "legal",
+  "cta",
+  "brand-mnemonic",
+  "note",
+];
 
 const durations = [10, 15, 20, 30, 40, 50, 60, 120];
 const approvalStatuses: ApprovalStatus[] = [
@@ -52,6 +66,9 @@ const retimeScript = (script: Project["script"]) => {
     wordsPerSecond: wordsPerSecond(lines),
   };
 };
+
+const rawTextFromLines = (lines: Project["script"]["lines"]) =>
+  lines.map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text)).join("\n");
 
 const storageKey = "ra-studio-current-project";
 
@@ -277,6 +294,22 @@ export function App() {
     });
   };
 
+  const updateScriptLine = (lineId: string, updates: Partial<Project["script"]["lines"][number]>) => {
+    setProject((current) => {
+      const currentLine = current.script.lines.find((line) => line.id === lineId);
+      if (!currentLine) return current;
+      const hasChange = Object.entries(updates).some(([key, value]) => currentLine[key as keyof typeof currentLine] !== value);
+      if (!hasChange) return current;
+      const updatedLines = current.script.lines.map((line) => (line.id === lineId ? { ...line, ...updates } : line));
+      const script = retimeScript({
+        ...current.script,
+        rawText: rawTextFromLines(updatedLines),
+        lines: updatedLines,
+      });
+      return recomputeProject({ ...current, script, soundCues: [] }, `Line ${currentLine.lineNumber} edited`);
+    });
+  };
+
   const startVoiceCommand = () => {
     type SpeechRecognitionCtor = new () => {
       lang: string;
@@ -468,9 +501,45 @@ export function App() {
                 <article className="script-line" key={line.id}>
                   <span>{line.lineNumber}</span>
                   <div>
+                    <div className="line-controls">
+                      <label>
+                        Type
+                        <select value={line.type} onChange={(event) => updateScriptLine(line.id, { type: event.target.value as ScriptLineType })}>
+                          {scriptLineTypes.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Voice
+                        <select
+                          value={line.assignedVoiceRoleId ?? ""}
+                          onChange={(event) => updateScriptLine(line.id, { assignedVoiceRoleId: event.target.value || undefined })}
+                          disabled={["music", "sound-effect", "pause", "note"].includes(line.type)}
+                        >
+                          <option value="">Unassigned</option>
+                          {project.voiceRoles.map((role) => (
+                            <option key={role.id} value={role.id}>
+                              {role.roleName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                     <strong>{line.speaker ?? line.type}</strong>
-                    <p>{line.text}</p>
+                    <textarea
+                      className="line-textarea"
+                      defaultValue={line.text}
+                      onBlur={(event) => updateScriptLine(line.id, { text: event.target.value })}
+                    />
                     <small>{line.startTime.toFixed(1)}-{line.endTime.toFixed(1)}s · {line.emotionalIntent.join(", ")} · {line.performanceNote}</small>
+                    <textarea
+                      className="line-note"
+                      defaultValue={line.performanceNote}
+                      onBlur={(event) => updateScriptLine(line.id, { performanceNote: event.target.value })}
+                    />
                     {line.warnings.map((warning) => (
                       <em key={warning}>{warning}</em>
                     ))}
