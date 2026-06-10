@@ -37,6 +37,7 @@ curl http://127.0.0.1:8787/api/providers/status
 - Export tab downloads project JSON, script markdown, cue sheet, QC report, Craft Quality report, and production notes.
 - Project JSON can be imported again using `Import JSON`.
 - Browser refresh preserves the current project through autosave.
+- `New Project` clears the browser autosave after confirmation.
 
 ## Command Flow
 

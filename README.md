@@ -15,6 +15,8 @@ npm run build
 
 For a focused manual QA pass, use [docs/testing-tonight.md](docs/testing-tonight.md).
 
+Use `New Project` in the header to clear the browser autosave after exporting JSON.
+
 ## What is included
 
 - Vite, React, and TypeScript app.

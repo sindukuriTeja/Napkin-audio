@@ -65,13 +65,36 @@ const isProjectLike = (value: unknown): value is Project =>
       "mixSettings" in value,
   );
 
+const normalizeProject = (candidate: Project) => {
+  const fallback = createProject();
+  return {
+    ...fallback,
+    ...candidate,
+    brief: { ...fallback.brief, ...candidate.brief },
+    script: { ...fallback.script, ...candidate.script, lines: candidate.script?.lines ?? fallback.script.lines },
+    voiceRoles: candidate.voiceRoles ?? fallback.voiceRoles,
+    voiceTakes: candidate.voiceTakes ?? fallback.voiceTakes,
+    soundCues: candidate.soundCues ?? fallback.soundCues,
+    musicCues: candidate.musicCues ?? fallback.musicCues,
+    timeline: candidate.timeline ?? fallback.timeline,
+    mixSettings: { ...fallback.mixSettings, ...candidate.mixSettings },
+    qcResults: candidate.qcResults ?? fallback.qcResults,
+    agentRecommendations: candidate.agentRecommendations ?? fallback.agentRecommendations,
+    craftMemory: candidate.craftMemory ?? fallback.craftMemory,
+    craftQuality: candidate.craftQuality ?? fallback.craftQuality,
+    commandLog: candidate.commandLog ?? fallback.commandLog,
+    versionHistory: candidate.versionHistory ?? fallback.versionHistory,
+    rightsRecords: candidate.rightsRecords ?? fallback.rightsRecords,
+  };
+};
+
 const loadInitialProject = () => {
   if (typeof window === "undefined") return createProject();
   const saved = window.localStorage.getItem(storageKey);
   if (!saved) return createProject();
   try {
     const parsed = JSON.parse(saved);
-    if (isProjectLike(parsed)) return recomputeProject(parsed, "Loaded saved browser project");
+    if (isProjectLike(parsed)) return recomputeProject(normalizeProject(parsed), "Loaded saved browser project");
   } catch {
     window.localStorage.removeItem(storageKey);
   }
@@ -93,7 +116,11 @@ export function App() {
   }, [project.script.rawText]);
 
   useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(project));
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(project));
+    } catch {
+      // Local persistence is a convenience only; export JSON remains the durable backup.
+    }
   }, [project]);
 
   const handleScriptUpload = async (file?: File) => {
@@ -115,7 +142,7 @@ export function App() {
         alert("That JSON does not look like an RA Studio project package.");
         return;
       }
-      const importedProject = recomputeProject(parsed, `Imported project JSON: ${file.name}`);
+      const importedProject = recomputeProject(normalizeProject(parsed), `Imported project JSON: ${file.name}`);
       setProject(importedProject);
       setActiveTab("Home");
     } catch {
@@ -128,6 +155,17 @@ export function App() {
     const intent = parseCommand(commandDraft, project);
     setProject((current) => ({ ...current, commandLog: [intent, ...current.commandLog], updatedAt: new Date().toISOString() }));
     setCommandDraft("");
+  };
+
+  const startNewProject = () => {
+    if (!window.confirm("Start a new RA Studio project and replace the browser autosave? Export JSON first if you need the current work.")) {
+      return;
+    }
+    window.localStorage.removeItem(storageKey);
+    const freshProject = createProject();
+    setProject(freshProject);
+    setScriptDraft(freshProject.script.rawText);
+    setActiveTab("Home");
   };
 
   const updateCommandStatus = (commandId: string, status: "applied" | "rejected") => {
@@ -303,6 +341,7 @@ export function App() {
           <button className="primary" onClick={() => setActiveTab("Script")}>
             <FileAudio size={18} /> Open Studio
           </button>
+          <button onClick={startNewProject}>New Project</button>
           <label className="file-button">
             Import JSON
             <input type="file" accept="application/json,.json" onChange={(event) => handleProjectImport(event.target.files?.[0])} />
