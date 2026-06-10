@@ -38,6 +38,7 @@ curl http://127.0.0.1:8787/api/providers/status
 - Legal lines show clear performance guidance.
 - Craft Quality tab shows overall score, score band, sub-scores, suggested actions, and recommendation.
 - Voices tab shows voice roles and can generate a mock take record.
+- Voice roles can be added and edited.
 - Sound tab shows sound cues and visual timeline.
 - Mix sliders move and do not break layout.
 - Export tab downloads project JSON, script markdown, cue sheet, QC report, Craft Quality report, and production notes.

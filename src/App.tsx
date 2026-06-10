@@ -26,7 +26,7 @@ import {
 import { createId } from "./lib/id";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
 import { MockVoiceProvider } from "./services/voiceProviders";
-import type { ApprovalStatus, Brief, Project, ScriptLineType } from "./types/models";
+import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole } from "./types/models";
 
 const tabs = ["Home", "Brief", "Script", "Voices", "Sound", "Mix", "Craft Quality", "Export", "Craft Memory"] as const;
 type Tab = (typeof tabs)[number];
@@ -46,6 +46,23 @@ const scriptLineTypes: ScriptLineType[] = [
 ];
 
 const durations = [10, 15, 20, 30, 40, 50, 60, 120];
+const accentOptions = [
+  "Dublin",
+  "Cork",
+  "Galway / West",
+  "Northern Irish",
+  "neutral Irish",
+  "rural Irish",
+  "premium Irish",
+  "working-class Dublin",
+  "soft Irish",
+  "RP",
+  "London",
+  "Manchester",
+  "Scottish",
+  "Welsh",
+  "custom",
+];
 const approvalStatuses: ApprovalStatus[] = [
   "Draft",
   "Internal review",
@@ -357,6 +374,42 @@ export function App() {
     });
   };
 
+  const addVoiceRole = () => {
+    setProject((current) => {
+      const roleNumber = current.voiceRoles.length + 1;
+      const voiceRole: VoiceRole = {
+        id: createId("voice"),
+        roleName: `Custom voice ${roleNumber}`,
+        characterDescription: "Describe the character, function, or casting route.",
+        ageRange: "30-50",
+        accent: current.brief.accentPreference || "neutral Irish",
+        emotionalStyle: "conversational",
+        pace: "conversational",
+        performanceNotes: "Keep the performance grounded and specific.",
+        pronunciationNotes: "",
+        provider: "mock",
+        rightsNotes: "Mock voice only. Confirm usage rights before production.",
+      };
+      return recomputeProject({ ...current, voiceRoles: [...current.voiceRoles, voiceRole] }, "Voice role added");
+    });
+  };
+
+  const updateVoiceRole = (roleId: string, updates: Partial<VoiceRole>) => {
+    setProject((current) => {
+      const currentRole = current.voiceRoles.find((role) => role.id === roleId);
+      if (!currentRole) return current;
+      const hasChange = Object.entries(updates).some(([key, value]) => currentRole[key as keyof VoiceRole] !== value);
+      if (!hasChange) return current;
+      return recomputeProject(
+        {
+          ...current,
+          voiceRoles: current.voiceRoles.map((role) => (role.id === roleId ? { ...role, ...updates } : role)),
+        },
+        `Voice role edited: ${currentRole.roleName}`,
+      );
+    });
+  };
+
   const startVoiceCommand = () => {
     type SpeechRecognitionCtor = new () => {
       lang: string;
@@ -605,13 +658,53 @@ export function App() {
       {activeTab === "Voices" && (
         <section className="studio-grid">
           <Panel title="Voice Casting" icon={<Mic size={18} />}>
+            <div className="upload-row">
+              <button className="primary" onClick={addVoiceRole}>
+                <Mic size={18} /> Add Voice Role
+              </button>
+            </div>
             <div className="card-grid">
               {project.voiceRoles.map((role) => (
                 <article className="voice-card" key={role.id}>
-                  <h3>{role.roleName}</h3>
-                  <p>{role.characterDescription}</p>
+                  <label>
+                    Role
+                    <input defaultValue={role.roleName} onBlur={(event) => updateVoiceRole(role.id, { roleName: event.target.value })} />
+                  </label>
+                  <label>
+                    Character
+                    <textarea
+                      defaultValue={role.characterDescription}
+                      onBlur={(event) => updateVoiceRole(role.id, { characterDescription: event.target.value })}
+                    />
+                  </label>
+                  <div className="voice-fields">
+                    <label>
+                      Accent
+                      <select value={role.accent} onChange={(event) => updateVoiceRole(role.id, { accent: event.target.value })}>
+                        {accentOptions.map((accent) => (
+                          <option key={accent}>{accent}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Pace
+                      <select value={role.pace} onChange={(event) => updateVoiceRole(role.id, { pace: event.target.value as VoiceRole["pace"] })}>
+                        <option value="slow">slow</option>
+                        <option value="measured">measured</option>
+                        <option value="conversational">conversational</option>
+                        <option value="quick">quick</option>
+                        <option value="fast-read">fast-read</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label>
+                    Performance notes
+                    <textarea
+                      defaultValue={role.performanceNotes}
+                      onBlur={(event) => updateVoiceRole(role.id, { performanceNotes: event.target.value })}
+                    />
+                  </label>
                   <span>{role.accent}</span>
-                  <small>{role.performanceNotes}</small>
                   <small>Provider: {role.provider} · {role.rightsNotes}</small>
                 </article>
               ))}
