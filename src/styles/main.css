@@ -616,7 +616,26 @@ input[type="range"] {
   }
 
   .tabs {
-    overflow-x: auto;
-    flex-wrap: nowrap;
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    overflow: visible;
+  }
+
+  .tabs button {
+    min-width: 0;
+    padding: 0.62rem 0.5rem;
+    white-space: normal;
+  }
+
+  .command-bar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .command-bar input {
+    grid-column: 1 / -1;
+    min-width: 0;
   }
 }

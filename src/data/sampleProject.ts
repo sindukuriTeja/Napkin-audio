@@ -157,7 +157,8 @@ export const createProject = (brief: Brief = defaultBrief(), rawScript = default
   return recomputeProject(base, "Initial project");
 };
 
-export const recomputeProject = (project: Project, summary = "Studio state refreshed"): Project => {
+export const recomputeProject = (project: Project, summary = "Studio state refreshed", options: { trackVersion?: boolean } = {}): Project => {
+  const trackVersion = options.trackVersion ?? true;
   const sound = SoundDesignAgent.buildCues(project);
   const withSound = {
     ...project,
@@ -200,7 +201,7 @@ export const recomputeProject = (project: Project, summary = "Studio state refre
   return {
     ...withQc,
     craftQuality,
-    versionHistory: [...project.versionHistory, versionEntry].slice(-12),
+    versionHistory: trackVersion ? [...project.versionHistory, versionEntry].slice(-12) : project.versionHistory,
   };
 };
 

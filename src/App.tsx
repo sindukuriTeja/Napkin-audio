@@ -131,7 +131,7 @@ const loadInitialProject = () => {
   if (!saved) return createProject();
   try {
     const parsed = JSON.parse(saved);
-    if (isProjectLike(parsed)) return recomputeProject(normalizeProject(parsed), "Loaded saved browser project");
+    if (isProjectLike(parsed)) return recomputeProject(normalizeProject(parsed), "Loaded saved browser project", { trackVersion: false });
   } catch {
     window.localStorage.removeItem(storageKey);
   }

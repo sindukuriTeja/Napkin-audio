@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ComplianceAgent, ScriptParserAgent } from "./studioAgents";
-import { createProject, updateScriptFromText } from "../data/sampleProject";
+import { createProject, recomputeProject, updateScriptFromText } from "../data/sampleProject";
 
 describe("ScriptParserAgent", () => {
   it("parses common radio script cues into typed lines and timings", () => {
@@ -46,5 +46,13 @@ describe("Craft Quality and QC", () => {
     const mandatoryCheck = updated.qcResults.find((result) => result.check === "Mandatory lines");
 
     expect(mandatoryCheck?.status).toBe("fail");
+  });
+
+  it("can refresh derived state without creating a version-history entry", () => {
+    const project = createProject();
+    const refreshed = recomputeProject(project, "Loaded saved browser project", { trackVersion: false });
+
+    expect(refreshed.versionHistory).toHaveLength(project.versionHistory.length);
+    expect(refreshed.craftQuality.overallScore).toBeGreaterThan(0);
   });
 });
