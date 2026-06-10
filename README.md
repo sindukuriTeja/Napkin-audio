@@ -13,6 +13,8 @@ npm run server
 npm run build
 ```
 
+For a focused manual QA pass, use [docs/testing-tonight.md](docs/testing-tonight.md).
+
 ## What is included
 
 - Vite, React, and TypeScript app.
