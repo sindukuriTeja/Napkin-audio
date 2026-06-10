@@ -41,10 +41,12 @@ const classifyLine = (raw: string): { speaker?: string; text: string; type: Scri
   const speakerMatch = trimmed.match(/^([A-Z][A-Z0-9 _-]{1,28}):\s*(.+)$/);
   const speaker = speakerMatch?.[1]?.trim();
   const text = speakerMatch?.[2]?.trim() ?? trimmed;
+  const label = speaker?.toLowerCase() ?? "";
   const lower = text.toLowerCase();
   if (/^\[?(sfx|fx|sound)/i.test(trimmed) || lower.includes("sfx:")) return { speaker, text, type: "sound-effect" };
   if (/^\[?(music|mx)/i.test(trimmed) || lower.includes("music:")) return { speaker, text, type: "music" };
   if (lower.includes("pause") || lower.includes("beat of silence")) return { speaker, text, type: "pause" };
+  if (label.includes("mnemonic") || label.includes("sonic logo")) return { speaker, text, type: "brand-mnemonic" };
   if (legalTerms.some((term) => lower.includes(term))) return { speaker, text, type: "legal" };
   if (ctaTerms.some((term) => lower.includes(term))) return { speaker, text, type: "cta" };
   if (lower.includes("sonic logo") || lower.includes("mnemonic")) return { speaker, text, type: "brand-mnemonic" };
