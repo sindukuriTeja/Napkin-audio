@@ -91,7 +91,7 @@ describe("provider proxy helpers", () => {
   });
 
   it("loads local .env values without overwriting existing environment values", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ra-studio-env-"));
+    const dir = mkdtempSync(join(tmpdir(), "napkin-ai-audio-studio-env-"));
     const envPath = join(dir, ".env");
     const env = { ELEVENLABS_API_KEY: "already-set" };
     writeFileSync(

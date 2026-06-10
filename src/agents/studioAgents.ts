@@ -490,7 +490,7 @@ export const ComplianceAgent = {
         id: createId("qc"),
         check: "Human approval",
         status: project.approvalStatus === "Approved for broadcast" ? "pass" : "fail",
-        explanation: "RA Studio never marks work broadcast-ready automatically.",
+        explanation: "Napkin AI Audio Studio never marks work broadcast-ready automatically.",
         recommendedFix: "A user must explicitly approve for broadcast after QC and production review.",
         confidence: "verified",
       },

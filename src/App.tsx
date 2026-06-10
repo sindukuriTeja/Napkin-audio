@@ -90,7 +90,8 @@ const retimeScript = (script: Project["script"]) => {
 const rawTextFromLines = (lines: Project["script"]["lines"]) =>
   lines.map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text)).join("\n");
 
-const storageKey = "ra-studio-current-project";
+const storageKey = "napkin-ai-audio-studio-current-project";
+const legacyStorageKeys = ["ra-studio-current-project"];
 
 const isProjectLike = (value: unknown): value is Project =>
   Boolean(
@@ -127,7 +128,7 @@ const normalizeProject = (candidate: Project) => {
 
 const loadInitialProject = () => {
   if (typeof window === "undefined") return createProject();
-  const saved = window.localStorage.getItem(storageKey);
+  const saved = window.localStorage.getItem(storageKey) ?? legacyStorageKeys.map((key) => window.localStorage.getItem(key)).find(Boolean);
   if (!saved) return createProject();
   try {
     const parsed = JSON.parse(saved);
@@ -178,7 +179,7 @@ export function App() {
     try {
       const parsed = JSON.parse(await file.text());
       if (!isProjectLike(parsed)) {
-        alert("That JSON does not look like an RA Studio project package.");
+        alert("That JSON does not look like a Napkin AI Audio Studio project package.");
         return;
       }
       const importedProject = recomputeProject(normalizeProject(parsed), `Imported project JSON: ${file.name}`);
@@ -197,10 +198,11 @@ export function App() {
   };
 
   const startNewProject = () => {
-    if (!window.confirm("Start a new RA Studio project and replace the browser autosave? Export JSON first if you need the current work.")) {
+    if (!window.confirm("Start a new Napkin AI Audio Studio project and replace the browser autosave? Export JSON first if you need the current work.")) {
       return;
     }
     window.localStorage.removeItem(storageKey);
+    legacyStorageKeys.forEach((key) => window.localStorage.removeItem(key));
     const freshProject = createProject();
     setProject(freshProject);
     setScriptDraft(freshProject.script.rawText);
@@ -471,16 +473,16 @@ export function App() {
     }
   };
 
-  const exportName = project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "ra-studio";
+  const exportName = project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "napkin-ai-audio-studio";
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">RA Studio</p>
+          <p className="eyebrow">Napkin AI Audio Studio</p>
           <h1>{project.brief.projectName}</h1>
           <p className="subhead">
-            AI radio craft studio for script, performance, sound design, QC, and export discipline.
+            AI audio craft studio for radio scripts, performance, sound design, QC, and export discipline.
           </p>
         </div>
         <div className="topbar-actions">

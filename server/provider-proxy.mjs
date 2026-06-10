@@ -320,7 +320,7 @@ export const createProviderProxyServer = (env = process.env) =>
   try {
     if (request.method === "OPTIONS") return json(response, 204, {});
     if (request.method === "GET" && request.url === "/health") {
-      return json(response, 200, { ok: true, service: "RA Studio provider proxy" });
+      return json(response, 200, { ok: true, service: "Napkin AI Audio Studio provider proxy" });
     }
     if (request.method === "GET" && request.url === "/api/providers/status") {
       return json(response, 200, providerStatus(env));
@@ -353,6 +353,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   loadLocalEnv();
   const server = createProviderProxyServer();
   server.listen(port, "127.0.0.1", () => {
-    console.log(`RA Studio provider proxy listening on http://127.0.0.1:${port}`);
+    console.log(`Napkin AI Audio Studio provider proxy listening on http://127.0.0.1:${port}`);
   });
 }

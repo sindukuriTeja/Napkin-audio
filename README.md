@@ -1,8 +1,8 @@
-# RA Studio
+# Napkin AI Audio Studio
 
-RA Studio is a local-first AI radio craft studio for writing, directing, judging, and packaging radio advertising work. It is designed for creative directors, copywriters, producers, sound designers, and agency teams who need a practical studio for script craft, timing, performance, sound design, rough mix planning, QC, and export discipline.
+Napkin AI Audio Studio is a local-first AI audio craft studio for writing, directing, judging, and packaging radio advertising work. It is designed for creative directors, copywriters, producers, sound designers, and agency teams who need a practical studio for script craft, timing, performance, sound design, rough mix planning, QC, and export discipline.
 
-This repo was prepared from the RA Studio build pack and recreates/improves the earlier `test-codex-2` Broadcast Blueprint Studio direction inside the current Napkin Audio repository.
+This repo was prepared from the original RA Studio build pack and recreates/improves the earlier `test-codex-2` Broadcast Blueprint Studio direction inside the current Napkin Audio repository.
 
 ## Run locally
 
@@ -70,7 +70,7 @@ The MVP is deterministic and local-first. Agents accept structured project state
 Copy `.env.example` to `.env` when you add real provider work:
 
 ```env
-VITE_APP_NAME=RA Studio
+VITE_APP_NAME=Napkin AI Audio Studio
 ELEVENLABS_API_KEY=
 ELEVENLABS_DEFAULT_VOICE_ID=
 NVIDIA_RIVA_ENDPOINT=
@@ -104,11 +104,11 @@ The NVIDIA Riva adapter is a planned enterprise adapter for streaming/offline sy
 
 The app includes a generic Irish radio package preset and station rows for RTE Radio 1, RTE 2FM, Today FM, Newstalk, FM104, 98FM, Spin, iRadio, Galway Bay FM, Cork's Red FM, Beat, Midlands 103, Highland Radio, LMFM, Sunshine, Classic Hits, Q102, and Other/custom.
 
-Station-specific technical values are deliberately marked `unknown` unless verified. RA Studio does not fabricate sample rate, loudness, true peak, naming, or delivery requirements. Confirm station traffic specs before dispatch.
+Station-specific technical values are deliberately marked `unknown` unless verified. Napkin AI Audio Studio does not fabricate sample rate, loudness, true peak, naming, or delivery requirements. Confirm station traffic specs before dispatch.
 
 ## Rights and approval
 
-RA Studio never labels a spot broadcast-ready automatically. QC can say a package is checked or ready for producer review, but only an explicit user action can set `Approved for broadcast`.
+Napkin AI Audio Studio never labels a spot broadcast-ready automatically. QC can say a package is checked or ready for producer review, but only an explicit user action can set `Approved for broadcast`.
 
 Rights records track source, licence status, owner, expiry, territory, channel, notes, and confidence. Unknown or needs-clearance rights are flagged before export.
 

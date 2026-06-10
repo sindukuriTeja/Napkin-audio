@@ -41,7 +41,7 @@ export const qcMarkdown = (project: Project, qcResults: QCResult[] = project.qcR
   lines([
     `# ${project.brief.projectName} QC Report`,
     "",
-    "RA Studio does not automatically label work broadcast-ready. Human approval is required.",
+    "Napkin AI Audio Studio does not automatically label work broadcast-ready. Human approval is required.",
     "",
     ...qcResults.map(
       (result) =>

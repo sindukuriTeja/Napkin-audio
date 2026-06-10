@@ -1,4 +1,4 @@
-# RA Studio Testing Checklist
+# Napkin AI Audio Studio Testing Checklist
 
 Use this checklist for a focused manual test session.
 

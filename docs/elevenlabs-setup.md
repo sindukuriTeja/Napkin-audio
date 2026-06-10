@@ -1,6 +1,6 @@
 # ElevenLabs Setup
 
-RA Studio is designed so ElevenLabs keys stay server-side. Do not put real API keys into frontend code.
+Napkin AI Audio Studio is designed so ElevenLabs keys stay server-side. Do not put real API keys into frontend code.
 
 ## 1. Create `.env`
 
@@ -38,7 +38,7 @@ Terminal 2:
 npm run dev
 ```
 
-## 3. Verify in RA Studio
+## 3. Verify in Napkin AI Audio Studio
 
 - Open the app.
 - Switch to Producer Mode.
