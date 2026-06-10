@@ -42,6 +42,8 @@ curl http://127.0.0.1:8787/api/providers/status
 - Sound tab shows sound cues and visual timeline.
 - Mix sliders move and do not break layout.
 - Export tab downloads project JSON, script markdown, cue sheet, QC report, Craft Quality report, and production notes.
+- Export station and preset can be changed.
+- Producer Mode shows station delivery details and unknown confidence warnings.
 - Project JSON can be imported again using `Import JSON`.
 - Browser refresh preserves the current project through autosave.
 - `New Project` clears the browser autosave after confirmation.

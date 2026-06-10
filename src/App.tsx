@@ -841,6 +841,48 @@ export function App() {
           <Panel title="Export Package" icon={<Download size={18} />}>
             <Metric label="Preset" value={preset.name} />
             <Metric label="Station" value={`${selectedStation.name} · ${selectedStation.confidenceLevel}`} />
+            <div className="export-targets">
+              <label>
+                Export preset
+                <select
+                  value={project.exportPresetId}
+                  onChange={(event) =>
+                    setProject((p) => recomputeProject({ ...p, exportPresetId: event.target.value }, "Export preset changed"))
+                  }
+                >
+                  {exportPresets.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Station / group
+                <select
+                  value={project.stationSpecId}
+                  onChange={(event) =>
+                    setProject((p) => recomputeProject({ ...p, stationSpecId: event.target.value }, "Station target changed"))
+                  }
+                >
+                  {stationSpecs.map((station) => (
+                    <option key={station.id} value={station.id}>
+                      {station.name} ({station.confidenceLevel})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {mode === "producer" ? (
+              <div className="station-detail">
+                <strong>{selectedStation.name} delivery confidence: {selectedStation.confidenceLevel}</strong>
+                <p>{selectedStation.notes}</p>
+                <small>
+                  Format: {selectedStation.acceptedFormats.join(", ")} · Sample rate: {selectedStation.sampleRate} · Loudness:{" "}
+                  {selectedStation.loudnessTarget} · True peak: {selectedStation.truePeakCeiling}
+                </small>
+              </div>
+            ) : null}
             <label>
               Approval status
               <select

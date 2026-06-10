@@ -452,6 +452,25 @@ label {
   border-radius: 8px;
 }
 
+.export-targets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.85rem 0;
+}
+
+.station-detail {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.station-detail p {
+  color: var(--muted);
+}
+
 input[type="range"] {
   accent-color: var(--gold);
 }
@@ -547,6 +566,7 @@ input[type="range"] {
   .script-layout,
   .form-grid,
   .line-controls,
+  .export-targets,
   .slider-grid,
   .voice-fields,
   .card-grid {
