@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "node server/provider-proxy.mjs",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "preview": "vite preview"

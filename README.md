@@ -9,6 +9,7 @@ This repo was prepared from the RA Studio build pack and recreates/improves the 
 ```bash
 npm install
 npm run dev
+npm run server
 npm run build
 ```
 
@@ -22,6 +23,7 @@ npm run build
 - Emotion, comedy, timing, performance, sound design, mix, station delivery, QC, and Craft Quality agents.
 - Voice casting panel with mock take generation.
 - Voice-provider abstraction for `MockVoiceProvider`, `ElevenLabsProvider`, and `NvidiaRivaProvider`.
+- Optional local provider proxy scaffold for server-side provider credentials.
 - Sound world panel and visual timeline.
 - Rough mix control surface.
 - Typed command bar and browser speech-recognition support where available.
@@ -66,9 +68,18 @@ ELEVENLABS_DEFAULT_VOICE_ID=
 NVIDIA_RIVA_ENDPOINT=
 NVIDIA_RIVA_API_KEY=
 NVIDIA_NIM_API_KEY=
+PORT=8787
+CORS_ORIGIN=http://127.0.0.1:5173
 ```
 
-Important: this frontend MVP does not call real voice APIs with secrets from the browser. The ElevenLabs and NVIDIA Riva adapters are present as guarded adapters and handoff documentation. Add a minimal backend proxy before using real credentials.
+Important: the frontend MVP does not call real voice APIs with secrets from the browser. A local provider proxy scaffold is available with `npm run server`, but real audio synthesis is still deliberately disabled until the provider-specific streaming and persistence code is added.
+
+Provider proxy endpoints:
+
+- `GET /health`
+- `GET /api/providers/status`
+- `POST /api/voice/elevenlabs/preview`
+- `POST /api/voice/riva/preview`
 
 ## ElevenLabs
 
