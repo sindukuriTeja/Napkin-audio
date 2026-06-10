@@ -29,6 +29,8 @@ curl http://127.0.0.1:8787/api/providers/status
 - Unsupported upload types show a clear warning.
 - Parser identifies SFX, music, legal, CTA, announcer, character, and brand mnemonic lines.
 - Parsed lines can be edited directly.
+- New script lines can be added manually.
+- Script lines can be deleted manually.
 - Line type can be manually retagged.
 - Voice role can be manually assigned to voice lines.
 - Performance notes can be adjusted line by line.

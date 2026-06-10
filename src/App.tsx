@@ -23,7 +23,8 @@ import {
   qcMarkdown,
   scriptMarkdown,
 } from "./export/exportPackage";
-import { assignLineTimings, totalDuration, wordsPerSecond } from "./lib/timing";
+import { createId } from "./lib/id";
+import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
 import { MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project, ScriptLineType } from "./types/models";
 
@@ -58,7 +59,8 @@ const setBriefField = <K extends keyof Brief>(project: Project, key: K, value: B
   recomputeProject({ ...project, brief: { ...project.brief, [key]: value } }, `Brief updated: ${String(key)}`);
 
 const retimeScript = (script: Project["script"]) => {
-  const lines = assignLineTimings(script.lines);
+  const numberedLines = script.lines.map((line, index) => ({ ...line, lineNumber: index + 1 }));
+  const lines = assignLineTimings(numberedLines);
   return {
     ...script,
     lines,
@@ -300,13 +302,58 @@ export function App() {
       if (!currentLine) return current;
       const hasChange = Object.entries(updates).some(([key, value]) => currentLine[key as keyof typeof currentLine] !== value);
       if (!hasChange) return current;
-      const updatedLines = current.script.lines.map((line) => (line.id === lineId ? { ...line, ...updates } : line));
+      const updatedLines = current.script.lines.map((line) => {
+        if (line.id !== lineId) return line;
+        const updatedLine = { ...line, ...updates };
+        if (updates.text !== undefined || updates.type !== undefined) {
+          return {
+            ...updatedLine,
+            estimatedDuration: estimateLineDuration(updatedLine.text, updatedLine.type === "legal"),
+          };
+        }
+        return updatedLine;
+      });
       const script = retimeScript({
         ...current.script,
         rawText: rawTextFromLines(updatedLines),
         lines: updatedLines,
       });
       return recomputeProject({ ...current, script, soundCues: [] }, `Line ${currentLine.lineNumber} edited`);
+    });
+  };
+
+  const addScriptLine = () => {
+    setProject((current) => {
+      const newLine: Project["script"]["lines"][number] = {
+        id: createId("line"),
+        lineNumber: current.script.lines.length + 1,
+        text: "New line",
+        type: "voiceover",
+        assignedVoiceRoleId: current.voiceRoles[0]?.id,
+        estimatedDuration: estimateLineDuration("New line"),
+        startTime: 0,
+        endTime: 0,
+        emotionalIntent: ["clear"],
+        performanceNote: "Conversational, specific, and human.",
+        accentNote: current.brief.accentPreference,
+        stressWords: [],
+        pauseBefore: 0,
+        pauseAfter: 0,
+        warnings: [],
+      };
+      const lines = [...current.script.lines, newLine];
+      const script = retimeScript({ ...current.script, rawText: rawTextFromLines(lines), lines });
+      return recomputeProject({ ...current, script, soundCues: [] }, "Manual line added");
+    });
+  };
+
+  const deleteScriptLine = (lineId: string) => {
+    setProject((current) => {
+      if (current.script.lines.length <= 1) return current;
+      const line = current.script.lines.find((item) => item.id === lineId);
+      const lines = current.script.lines.filter((item) => item.id !== lineId);
+      const script = retimeScript({ ...current.script, rawText: rawTextFromLines(lines), lines });
+      return recomputeProject({ ...current, script, soundCues: [] }, `Line ${line?.lineNumber ?? ""} deleted`);
     });
   };
 
@@ -485,6 +532,7 @@ export function App() {
               <button className="primary" onClick={() => setProject((p) => updateScriptFromText(p, scriptDraft))}>
                 Parse script
               </button>
+              <button onClick={addScriptLine}>Add Line</button>
             </div>
             <textarea className="script-input" value={scriptDraft} onChange={(event) => setScriptDraft(event.target.value)} />
           </Panel>
@@ -527,6 +575,9 @@ export function App() {
                           ))}
                         </select>
                       </label>
+                      <button className="danger-button" onClick={() => deleteScriptLine(line.id)} disabled={project.script.lines.length <= 1}>
+                        Delete
+                      </button>
                     </div>
                     <strong>{line.speaker ?? line.type}</strong>
                     <textarea

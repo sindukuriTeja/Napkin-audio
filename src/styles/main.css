@@ -64,6 +64,12 @@ button.primary {
   font-weight: 750;
 }
 
+button.danger-button {
+  align-self: end;
+  border-color: rgba(223, 123, 109, 0.5);
+  color: #ffd6d0;
+}
+
 input,
 textarea,
 select {
@@ -305,7 +311,7 @@ label {
 
 .line-controls {
   display: grid;
-  grid-template-columns: minmax(120px, 0.35fr) minmax(140px, 0.65fr);
+  grid-template-columns: minmax(120px, 0.3fr) minmax(140px, 0.55fr) auto;
   gap: 0.65rem;
   margin-bottom: 0.65rem;
 }
