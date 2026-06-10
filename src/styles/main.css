@@ -471,6 +471,24 @@ label {
   color: var(--muted);
 }
 
+.provider-status {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.provider-status-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
 input[type="range"] {
   accent-color: var(--gold);
 }
@@ -567,6 +585,7 @@ input[type="range"] {
   .form-grid,
   .line-controls,
   .export-targets,
+  .provider-grid,
   .slider-grid,
   .voice-fields,
   .card-grid {

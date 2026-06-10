@@ -17,6 +17,8 @@ For a focused manual QA pass, use [docs/testing-tonight.md](docs/testing-tonight
 
 Use `New Project` in the header to clear the browser autosave after exporting JSON.
 
+For ElevenLabs credential setup, use [docs/elevenlabs-setup.md](docs/elevenlabs-setup.md).
+
 ## What is included
 
 - Vite, React, and TypeScript app.

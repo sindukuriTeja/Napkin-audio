@@ -25,6 +25,7 @@ import {
 } from "./export/exportPackage";
 import { createId } from "./lib/id";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
+import { fetchProviderStatus, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
 import { MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole } from "./types/models";
 
@@ -143,6 +144,8 @@ export function App() {
   const [mode, setMode] = useState<"creative" | "producer">("creative");
   const [scriptDraft, setScriptDraft] = useState(project.script.rawText);
   const [commandDraft, setCommandDraft] = useState("");
+  const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
+  const [providerStatusMessage, setProviderStatusMessage] = useState("Provider proxy not checked yet.");
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
@@ -450,6 +453,24 @@ export function App() {
     setProject((current) => recomputeProject({ ...current, voiceTakes: [take, ...current.voiceTakes] }, "Mock voice take generated"));
   };
 
+  const checkProviderStatus = async () => {
+    setProviderStatusMessage("Checking provider proxy...");
+    try {
+      const status = await fetchProviderStatus();
+      setProviderStatus(status);
+      setProviderStatusMessage(
+        status.elevenLabs.configured
+          ? "ElevenLabs key detected by the local proxy. Real audio streaming is still scaffolded."
+          : "ElevenLabs key not detected. Mock provider remains active.",
+      );
+    } catch (error) {
+      setProviderStatus(null);
+      setProviderStatusMessage(
+        `Provider proxy unavailable at ${providerProxyBaseUrl}. Run npm run server after adding .env values.`,
+      );
+    }
+  };
+
   const exportName = project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "ra-studio";
 
   return (
@@ -722,9 +743,30 @@ export function App() {
               </div>
             ))}
             {mode === "producer" && (
-              <pre className="code-note">
-                ElevenLabs and NVIDIA Riva adapters are present but disabled in-browser. Add a server proxy before real calls.
-              </pre>
+              <div className="provider-status">
+                <div className="provider-status-header">
+                  <strong>Provider setup</strong>
+                  <button onClick={checkProviderStatus}>Check Providers</button>
+                </div>
+                <p>{providerStatusMessage}</p>
+                <div className="provider-grid">
+                  <Metric
+                    label="ElevenLabs key"
+                    value={providerStatus?.elevenLabs.configured ? "Detected" : "Not detected"}
+                  />
+                  <Metric
+                    label="Default voice"
+                    value={providerStatus?.elevenLabs.defaultVoiceIdConfigured ? "Configured" : "Missing"}
+                  />
+                  <Metric
+                    label="Proxy URL"
+                    value={providerProxyBaseUrl.replace("http://", "")}
+                  />
+                </div>
+                <pre className="code-note">
+                  Add ELEVENLABS_API_KEY and ELEVENLABS_DEFAULT_VOICE_ID to .env, run npm run server, then check providers here. Keys stay server-side.
+                </pre>
+              </div>
             )}
           </Panel>
         </section>
