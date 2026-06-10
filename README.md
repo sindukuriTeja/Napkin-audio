@@ -27,10 +27,12 @@ npm run build
 - Sound world panel and visual timeline.
 - Rough mix control surface.
 - Typed command bar and browser speech-recognition support where available.
+- Apply/reject command proposals, with browser autosave for the current project.
 - Craft Quality Score with sub-scores, strengths, improvements, next craft move, and producer-review guidance.
 - Irish radio export preset and station-spec data with confidence labels.
 - QC checks for duration, mandatories, CTA, legal speed, voice assignment, rights, station specs, and human approval.
 - Export downloads for project JSON, script markdown, cue sheet markdown, QC markdown, Craft Quality markdown, and production notes markdown.
+- Project JSON import for continuing a previously exported package.
 - Craft Memory and version history.
 
 ## Architecture

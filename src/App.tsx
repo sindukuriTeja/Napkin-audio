@@ -9,7 +9,7 @@ import {
   Upload,
   Wand2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { parseCommand, ScriptDoctorAgent } from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { exportPresets, stationSpecs } from "./data/stationSpecs";
@@ -23,6 +23,7 @@ import {
   qcMarkdown,
   scriptMarkdown,
 } from "./export/exportPackage";
+import { assignLineTimings, totalDuration, wordsPerSecond } from "./lib/timing";
 import { MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project } from "./types/models";
 
@@ -42,8 +43,43 @@ const approvalStatuses: ApprovalStatus[] = [
 const setBriefField = <K extends keyof Brief>(project: Project, key: K, value: Brief[K]) =>
   recomputeProject({ ...project, brief: { ...project.brief, [key]: value } }, `Brief updated: ${String(key)}`);
 
+const retimeScript = (script: Project["script"]) => {
+  const lines = assignLineTimings(script.lines);
+  return {
+    ...script,
+    lines,
+    estimatedDuration: totalDuration(lines),
+    wordsPerSecond: wordsPerSecond(lines),
+  };
+};
+
+const storageKey = "ra-studio-current-project";
+
+const isProjectLike = (value: unknown): value is Project =>
+  Boolean(
+    value &&
+      typeof value === "object" &&
+      "brief" in value &&
+      "script" in value &&
+      "voiceRoles" in value &&
+      "mixSettings" in value,
+  );
+
+const loadInitialProject = () => {
+  if (typeof window === "undefined") return createProject();
+  const saved = window.localStorage.getItem(storageKey);
+  if (!saved) return createProject();
+  try {
+    const parsed = JSON.parse(saved);
+    if (isProjectLike(parsed)) return recomputeProject(parsed, "Loaded saved browser project");
+  } catch {
+    window.localStorage.removeItem(storageKey);
+  }
+  return createProject();
+};
+
 export function App() {
-  const [project, setProject] = useState<Project>(() => createProject());
+  const [project, setProject] = useState<Project>(() => loadInitialProject());
   const [activeTab, setActiveTab] = useState<Tab>("Home");
   const [mode, setMode] = useState<"creative" | "producer">("creative");
   const [scriptDraft, setScriptDraft] = useState(project.script.rawText);
@@ -51,6 +87,14 @@ export function App() {
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
+
+  useEffect(() => {
+    setScriptDraft(project.script.rawText);
+  }, [project.script.rawText]);
+
+  useEffect(() => {
+    window.localStorage.setItem(storageKey, JSON.stringify(project));
+  }, [project]);
 
   const handleScriptUpload = async (file?: File) => {
     if (!file) return;
@@ -63,11 +107,136 @@ export function App() {
     setProject((current) => updateScriptFromText(current, text));
   };
 
+  const handleProjectImport = async (file?: File) => {
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!isProjectLike(parsed)) {
+        alert("That JSON does not look like an RA Studio project package.");
+        return;
+      }
+      const importedProject = recomputeProject(parsed, `Imported project JSON: ${file.name}`);
+      setProject(importedProject);
+      setActiveTab("Home");
+    } catch {
+      alert("Could not read that project JSON.");
+    }
+  };
+
   const addCommand = () => {
     if (!commandDraft.trim()) return;
     const intent = parseCommand(commandDraft, project);
     setProject((current) => ({ ...current, commandLog: [intent, ...current.commandLog], updatedAt: new Date().toISOString() }));
     setCommandDraft("");
+  };
+
+  const updateCommandStatus = (commandId: string, status: "applied" | "rejected") => {
+    setProject((current) => ({
+      ...current,
+      commandLog: current.commandLog.map((command) => (command.id === commandId ? { ...command, status } : command)),
+      updatedAt: new Date().toISOString(),
+    }));
+  };
+
+  const applyCommand = (commandId: string) => {
+    setProject((current) => {
+      const command = current.commandLog.find((item) => item.id === commandId);
+      if (!command || command.status !== "proposed") return current;
+      const commandLog = current.commandLog.map((item) => (item.id === commandId ? { ...item, status: "applied" as const } : item));
+      const targetLines = command.affectedLineIds.length
+        ? command.affectedLineIds
+        : current.script.lines.filter((line) => !["music", "sound-effect", "pause", "note"].includes(line.type)).map((line) => line.id);
+
+      if (command.intent === "change-voice") {
+        const lower = command.rawCommand.toLowerCase();
+        const accent = lower.includes("cork")
+          ? "Cork"
+          : lower.includes("dublin")
+            ? "Dublin"
+            : lower.includes("soft")
+              ? "soft Irish"
+              : current.brief.accentPreference;
+        return recomputeProject(
+          {
+            ...current,
+            commandLog,
+            voiceRoles: current.voiceRoles.map((role, index) => (index === 0 ? { ...role, accent } : role)),
+          },
+          `Applied command: ${command.rawCommand}`,
+        );
+      }
+
+      if (command.intent === "change-music") {
+        return recomputeProject(
+          {
+            ...current,
+            commandLog,
+            musicCues: current.musicCues.map((cue) => ({
+              ...cue,
+              style: command.rawCommand.toLowerCase().includes("cinematic") ? "cinematic restrained bed" : cue.style,
+              notes: `${cue.notes} Direction from command: ${command.rawCommand}`,
+            })),
+          },
+          `Applied command: ${command.rawCommand}`,
+        );
+      }
+
+      if (command.intent === "remove-sfx") {
+        const script = retimeScript({
+          ...current.script,
+          rawText: current.script.lines
+            .filter((line) => line.type !== "sound-effect")
+            .map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text))
+            .join("\n"),
+          lines: current.script.lines.filter((line) => line.type !== "sound-effect"),
+        });
+        return recomputeProject(
+          {
+            ...current,
+            commandLog,
+            script,
+            soundCues: [],
+          },
+          `Applied command: ${command.rawCommand}`,
+        );
+      }
+
+      const script = retimeScript({
+        ...current.script,
+        lines: current.script.lines.map((line) => {
+          if (!targetLines.includes(line.id)) return line;
+          if (command.intent === "slow-legal" && line.type === "legal") {
+            return {
+              ...line,
+              estimatedDuration: Number((line.estimatedDuration + 0.8).toFixed(1)),
+              performanceNote: "Slow this legal line down. Clarity over speed.",
+              warnings: line.warnings.filter((warning) => !warning.includes("Legal line speed")),
+            };
+          }
+          if (command.intent === "improve-ending") {
+            return {
+              ...line,
+              performanceNote: `${line.performanceNote} Make the ending land with a cleaner reveal and half a beat before the brand.`,
+            };
+          }
+          if (command.intent === "tighten-script") {
+            return {
+              ...line,
+              performanceNote: `${line.performanceNote} Tighten this line before recording; remove any word that does not move the idea.`,
+            };
+          }
+          if (command.intent === "performance-note") {
+            return {
+              ...line,
+              performanceNote: `${line.performanceNote} Direction from command: ${command.rawCommand}`,
+            };
+          }
+          return line;
+        }),
+      });
+
+      return recomputeProject({ ...current, commandLog, script }, `Applied command: ${command.rawCommand}`);
+    });
   };
 
   const startVoiceCommand = () => {
@@ -134,6 +303,10 @@ export function App() {
           <button className="primary" onClick={() => setActiveTab("Script")}>
             <FileAudio size={18} /> Open Studio
           </button>
+          <label className="file-button">
+            Import JSON
+            <input type="file" accept="application/json,.json" onChange={(event) => handleProjectImport(event.target.files?.[0])} />
+          </label>
         </div>
       </header>
 
@@ -468,6 +641,13 @@ export function App() {
               <div className="list-row" key={command.id}>
                 <strong>{command.rawCommand}</strong>
                 <span>{command.intent}: {command.proposedChange}</span>
+                <small>Status: {command.status}</small>
+                {command.status === "proposed" ? (
+                  <div className="inline-actions">
+                    <button onClick={() => applyCommand(command.id)}>Apply</button>
+                    <button onClick={() => updateCommandStatus(command.id, "rejected")}>Reject</button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </Panel>

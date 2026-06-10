@@ -134,7 +134,8 @@ label {
 .tabs,
 .command-bar,
 .upload-row,
-.export-buttons {
+.export-buttons,
+.inline-actions {
   display: flex;
   gap: 0.55rem;
   flex-wrap: wrap;
@@ -309,6 +310,14 @@ label {
 .qc-row small {
   color: var(--muted);
   display: block;
+}
+
+.inline-actions {
+  margin-top: 0.65rem;
+}
+
+.inline-actions button {
+  padding: 0.5rem 0.7rem;
 }
 
 .script-line em {
