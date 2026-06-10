@@ -2,6 +2,12 @@ export interface ProviderStatus {
   elevenLabs: {
     configured: boolean;
     defaultVoiceIdConfigured: boolean;
+    capabilities?: {
+      speech: boolean;
+      soundEffects: boolean;
+      music: boolean;
+      dubbing: boolean;
+    };
   };
   nvidiaRiva: {
     configured: boolean;

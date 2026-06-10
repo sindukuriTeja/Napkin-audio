@@ -460,7 +460,7 @@ export function App() {
       setProviderStatus(status);
       setProviderStatusMessage(
         status.elevenLabs.configured
-          ? "ElevenLabs key detected by the local proxy. Real audio streaming is still scaffolded."
+          ? "ElevenLabs key detected. Server-side routes are available for speech, SFX, music, and source-URL dubbing."
           : "ElevenLabs key not detected. Mock provider remains active.",
       );
     } catch (error) {
@@ -757,6 +757,10 @@ export function App() {
                   <Metric
                     label="Default voice"
                     value={providerStatus?.elevenLabs.defaultVoiceIdConfigured ? "Configured" : "Missing"}
+                  />
+                  <Metric
+                    label="Audio routes"
+                    value={providerStatus?.elevenLabs.capabilities?.speech ? "Ready" : "Mock only"}
                   />
                   <Metric
                     label="Proxy URL"

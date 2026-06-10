@@ -80,18 +80,21 @@ PORT=8787
 CORS_ORIGIN=http://127.0.0.1:5173
 ```
 
-Important: the frontend MVP does not call real voice APIs with secrets from the browser. A local provider proxy scaffold is available with `npm run server`, but real audio synthesis is still deliberately disabled until the provider-specific streaming and persistence code is added.
+Important: the frontend MVP does not call real voice APIs with secrets from the browser. A local provider proxy is available with `npm run server`; it keeps provider keys server-side and can forward live ElevenLabs speech, SFX, music, and source-URL dubbing requests when credentials are configured.
 
 Provider proxy endpoints:
 
 - `GET /health`
 - `GET /api/providers/status`
 - `POST /api/voice/elevenlabs/preview`
+- `POST /api/sound/elevenlabs/effect`
+- `POST /api/music/elevenlabs/compose`
+- `POST /api/dubbing/elevenlabs/create`
 - `POST /api/voice/riva/preview`
 
 ## ElevenLabs
 
-The app includes an ElevenLabs provider class with the expected input shape: `voice_id`, `model_id`, text, output format, settings, pronunciation support, and continuity context. Real generation is disabled until a server-side proxy keeps `ELEVENLABS_API_KEY` out of the browser bundle.
+The app includes an ElevenLabs provider path for `voice_id`, `model_id`, text, output format, settings, pronunciation support, continuity context, sound effect prompts, music prompts, and source-URL dubbing jobs. The proxy can return live audio bytes, but the frontend still needs asset persistence and mix rendering before this is a complete production audio workflow.
 
 ## NVIDIA Riva / NIM
 
@@ -117,15 +120,15 @@ It does not claim awards performance, guaranteed effectiveness, or automatic bro
 
 ## Known limitations
 
-- No real audio rendering or mastering in v1.
+- No full spot rendering or mastering in v1.
 - `.docx` upload is not implemented; paste extracted text or upload `.txt` / `.md`.
-- Real ElevenLabs, NVIDIA Riva, and NIM calls need a backend proxy.
+- ElevenLabs live calls require the local provider proxy plus a configured key and plan access; NVIDIA Riva and NIM remain scaffolds.
 - Loudness, true peak, clipping, file format, head/tail silence, and station compliance checks are placeholders until production audio analysis is added.
 - Station specifications remain unverified and must be confirmed with current station delivery requirements.
 
 ## Next development phases
 
-1. Add a secure Node/Express provider proxy for voice generation.
+1. Persist returned provider audio as project assets.
 2. Add real audio preview/rendering with Web Audio or server-side FFmpeg.
 3. Add `.docx` parsing.
 4. Add richer version compare/restore.

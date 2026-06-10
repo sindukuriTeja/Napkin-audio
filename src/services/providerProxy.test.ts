@@ -4,7 +4,11 @@ import { fetchProviderStatus, providerProxyBaseUrl } from "./providerProxy";
 describe("frontend provider proxy service", () => {
   it("fetches provider status from the configured proxy URL", async () => {
     const status = {
-      elevenLabs: { configured: true, defaultVoiceIdConfigured: false },
+      elevenLabs: {
+        configured: true,
+        defaultVoiceIdConfigured: false,
+        capabilities: { speech: true, soundEffects: true, music: true, dubbing: true },
+      },
       nvidiaRiva: { configured: false, endpointConfigured: false },
       nvidiaNim: { configured: false },
     };

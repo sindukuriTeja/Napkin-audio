@@ -22,6 +22,8 @@ CORS_ORIGIN=http://127.0.0.1:5173
 
 Keep `.env` local. It is ignored by Git.
 
+`npm run server` reads `.env` automatically. Values already present in your shell environment win over `.env` values.
+
 ## 2. Start both processes
 
 Terminal 1:
@@ -47,10 +49,22 @@ Expected result after adding a key:
 
 - ElevenLabs key: `Detected`
 - Default voice: `Configured`
+- Audio routes: `Ready`
+
+## Server-side ElevenLabs routes
+
+The local proxy keeps the API key out of the browser and forwards these routes:
+
+- `POST /api/voice/elevenlabs/preview`
+- `POST /api/sound/elevenlabs/effect`
+- `POST /api/music/elevenlabs/compose`
+- `POST /api/dubbing/elevenlabs/create`
+
+Voice, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. Dubbing currently supports JSON requests with a public `sourceUrl`; browser file upload and local multipart upload are still future work.
 
 ## Current limitation
 
-The proxy can detect credentials and validate preview requests, but real audio streaming is still scaffolded. The next implementation step is to wire `/api/voice/elevenlabs/preview` to ElevenLabs text-to-speech and return audio bytes or a saved take record.
+The app UI can check provider readiness and still records mock takes by default. The backend proxy is ready for live provider calls, but the frontend does not yet save returned audio assets into the project package or render a full mixed spot.
 
 ## Safe curl checks
 
