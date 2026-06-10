@@ -114,4 +114,18 @@ describe("provider proxy helpers", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("can let local .env values override inherited shell values for the dev server", () => {
+    const dir = mkdtempSync(join(tmpdir(), "napkin-ai-audio-studio-env-"));
+    const envPath = join(dir, ".env");
+    const env = { ELEVENLABS_API_KEY: "invalid-inherited-key" };
+    writeFileSync(envPath, "ELEVENLABS_API_KEY=real-local-key\n");
+
+    try {
+      expect(loadLocalEnv(envPath, env, { override: true })).toEqual(["ELEVENLABS_API_KEY"]);
+      expect(env.ELEVENLABS_API_KEY).toBe("real-local-key");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

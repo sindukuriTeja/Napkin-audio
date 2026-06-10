@@ -22,7 +22,7 @@ CORS_ORIGIN=http://127.0.0.1:5173
 
 Keep `.env` local. It is ignored by Git.
 
-`npm run server` reads `.env` automatically. Values already present in your shell environment win over `.env` values.
+`npm run server` reads `.env` automatically. For local development, `.env` wins over inherited shell values so a stale key in your terminal cannot block the key you paste here.
 
 ## 2. Start both processes
 

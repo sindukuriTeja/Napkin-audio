@@ -14,8 +14,9 @@ const corsHeaders = () => ({
   "Access-Control-Expose-Headers": "Content-Type,Content-Length,character-cost,request-id,history-item-id,song-id",
 });
 
-export const loadLocalEnv = (filePath = resolve(process.cwd(), ".env"), env = process.env) => {
+export const loadLocalEnv = (filePath = resolve(process.cwd(), ".env"), env = process.env, options = {}) => {
   if (!existsSync(filePath)) return [];
+  const override = Boolean(options.override);
   const loadedKeys = [];
   const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
   for (const line of lines) {
@@ -25,7 +26,7 @@ export const loadLocalEnv = (filePath = resolve(process.cwd(), ".env"), env = pr
     if (separatorIndex === -1) continue;
     const key = trimmed.slice(0, separatorIndex).trim();
     let value = trimmed.slice(separatorIndex + 1).trim();
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || env[key] !== undefined) continue;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || (!override && env[key] !== undefined)) continue;
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
@@ -350,7 +351,7 @@ export const createProviderProxyServer = (env = process.env) =>
   });
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  loadLocalEnv();
+  loadLocalEnv(resolve(process.cwd(), ".env"), process.env, { override: true });
   const server = createProviderProxyServer();
   server.listen(port, "127.0.0.1", () => {
     console.log(`Napkin AI Audio Studio provider proxy listening on http://127.0.0.1:${port}`);
