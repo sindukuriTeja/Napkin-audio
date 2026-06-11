@@ -18,6 +18,28 @@ MNEMONIC: Napkin. Sorted.`,
     expect(script.wordsPerSecond).toBeGreaterThan(0);
     expect(script.lines[2].performanceNote).toContain("legal");
   });
+
+  it("detects numbered voiceovers, brand voice, brown voice, and mnemonics", () => {
+    const script = ScriptParserAgent.parse(
+      `VOICEOVER 1: The morning starts softly.
+VO 2: Then the second voice answers.
+VOICEOVER 3: A third voice is rare, but possible.
+BRAND VOICE: Napkin Fresh.
+BROWN VOICE: A defensive spelling we still treat as brand voice.
+MNEMONIC: Napkin Fresh. Sorted.`,
+      30,
+    );
+
+    expect(script.lines.map((line) => line.type)).toEqual([
+      "voiceover",
+      "voiceover",
+      "voiceover",
+      "brand-mnemonic",
+      "brand-mnemonic",
+      "brand-mnemonic",
+    ]);
+    expect(script.lines.map((line) => line.speaker)).toEqual(["VOICEOVER 1", "VO 2", "VOICEOVER 3", "BRAND VOICE", "BROWN VOICE", "MNEMONIC"]);
+  });
 });
 
 describe("Craft Quality and QC", () => {
@@ -46,6 +68,27 @@ describe("Craft Quality and QC", () => {
     const mandatoryCheck = updated.qcResults.find((result) => result.check === "Mandatory lines");
 
     expect(mandatoryCheck?.status).toBe("fail");
+  });
+
+  it("creates distinct casting roles for detected VO lanes and brand mnemonic lines", () => {
+    const project = createProject();
+    const updated = updateScriptFromText(
+      project,
+      `VOICEOVER 1: The morning starts softly.
+VO 2: Then the second voice answers.
+VOICEOVER 3: A third voice is rare, but possible.
+BROWN VOICE: Napkin Fresh.
+MNEMONIC: Napkin Fresh. Sorted.`,
+    );
+
+    expect(updated.voiceRoles.map((role) => role.id)).toEqual(
+      expect.arrayContaining(["voice-voiceover-1", "voice-voiceover-2", "voice-voiceover-3", "voice-brand"]),
+    );
+    expect(updated.script.lines.find((line) => line.speaker === "VOICEOVER 1")?.assignedVoiceRoleId).toBe("voice-voiceover-1");
+    expect(updated.script.lines.find((line) => line.speaker === "VO 2")?.assignedVoiceRoleId).toBe("voice-voiceover-2");
+    expect(updated.script.lines.find((line) => line.speaker === "VOICEOVER 3")?.assignedVoiceRoleId).toBe("voice-voiceover-3");
+    expect(updated.script.lines.find((line) => line.speaker === "BROWN VOICE")?.assignedVoiceRoleId).toBe("voice-brand");
+    expect(updated.script.lines.find((line) => line.speaker === "MNEMONIC")?.assignedVoiceRoleId).toBe("voice-brand");
   });
 
   it("can refresh derived state without creating a version-history entry", () => {

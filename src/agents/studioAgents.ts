@@ -36,21 +36,44 @@ const emotionLexicon: Record<string, string[]> = {
   "deadpan energy": ["fine", "great", "obviously", "deadpan", "sure"],
 };
 
+const normalizeSpeakerLabel = (value = "") =>
+  value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const compactSpeakerLabel = (value = "") => normalizeSpeakerLabel(value).replace(/\s+/g, "");
+
+const isVoiceoverLabel = (speaker?: string) => {
+  const normalized = normalizeSpeakerLabel(speaker);
+  const compact = compactSpeakerLabel(speaker);
+  return /^(vo|voiceover|voiceover[123]|vo[123])$/.test(compact) || /^voice over [123]?$/.test(normalized);
+};
+
+const isBrandMnemonicLabel = (speaker?: string) => {
+  const normalized = normalizeSpeakerLabel(speaker);
+  return ["brand", "brand voice", "brown", "brown voice", "mnemonic", "sonic logo"].includes(normalized);
+};
+
 const classifyLine = (raw: string): { speaker?: string; text: string; type: ScriptLineType } => {
   const trimmed = raw.trim();
-  const speakerMatch = trimmed.match(/^([A-Z][A-Z0-9 _-]{1,28}):\s*(.+)$/);
+  const speakerMatch = trimmed.match(/^([A-Za-z][A-Za-z0-9 /_-]{1,32}):\s*(.+)$/);
   const speaker = speakerMatch?.[1]?.trim();
   const text = speakerMatch?.[2]?.trim() ?? trimmed;
-  const label = speaker?.toLowerCase() ?? "";
+  const label = normalizeSpeakerLabel(speaker);
   const lower = text.toLowerCase();
   if (/^\[?(sfx|fx|sound)/i.test(trimmed) || lower.includes("sfx:")) return { speaker, text, type: "sound-effect" };
   if (/^\[?(music|mx)/i.test(trimmed) || lower.includes("music:")) return { speaker, text, type: "music" };
   if (lower.includes("pause") || lower.includes("beat of silence")) return { speaker, text, type: "pause" };
-  if (label.includes("mnemonic") || label.includes("sonic logo")) return { speaker, text, type: "brand-mnemonic" };
+  if (label.includes("mnemonic") || label.includes("sonic logo") || isBrandMnemonicLabel(speaker)) {
+    return { speaker, text, type: "brand-mnemonic" };
+  }
   if (legalTerms.some((term) => lower.includes(term))) return { speaker, text, type: "legal" };
   if (ctaTerms.some((term) => lower.includes(term))) return { speaker, text, type: "cta" };
   if (lower.includes("sonic logo") || lower.includes("mnemonic")) return { speaker, text, type: "brand-mnemonic" };
-  if (speaker && /anncr|announcer|vo|voiceover/.test(speaker.toLowerCase())) return { speaker, text, type: "announcer" };
+  if (isVoiceoverLabel(speaker)) return { speaker, text, type: "voiceover" };
+  if (speaker && /anncr|announcer/.test(label)) return { speaker, text, type: "announcer" };
   if (speaker) return { speaker, text, type: "character" };
   return { text, type: "voiceover" };
 };
