@@ -1,4 +1,4 @@
-# Napkin AI Audio Studio Testing Checklist
+# Napkin Audio AI Studio Testing Checklist
 
 Use this checklist for a focused manual test session.
 
@@ -21,7 +21,7 @@ curl http://127.0.0.1:8787/api/providers/status
 
 ## Core Flow
 
-- Home loads with project name, brand, duration, approval status, quality score, versions, and next craft move.
+- Dashboard loads with project name, brand, duration, approval status, quality score, versions, and next craft move.
 - Brief fields can be edited without crashing.
 - Duration can be changed to 10, 15, 20, 30, 40, 50, 60, and 120 seconds.
 - Script tab accepts pasted copy and reparses it.
@@ -36,10 +36,11 @@ curl http://127.0.0.1:8787/api/providers/status
 - Performance notes can be adjusted line by line.
 - Timing updates and warnings are understandable.
 - Legal lines show clear performance guidance.
-- Craft Quality tab shows overall score, score band, sub-scores, suggested actions, and recommendation.
+- Irish Delivery shows Craft Quality score, score band, suggested actions, and recommendation.
 - Voices tab shows voice roles and can generate a mock take record.
 - Voice roles can be added and edited.
-- Sound tab shows sound cues and visual timeline.
+- VO Voice Transformer requires consent before attempting a provider preview.
+- Sound Design shows sound cues, SFX/music controls, and visual timeline.
 - Mix sliders move and do not break layout.
 - Export tab downloads project JSON, script markdown, cue sheet, QC report, Craft Quality report, and production notes.
 - Export station and preset can be changed.
@@ -58,9 +59,11 @@ Try these commands:
 - `Make the music more cinematic`
 - `Remove the sound effect at five seconds`
 
+Try the Audio Director microphone button with one of the same directions where browser speech recognition is available.
+
 For each command:
 
-- Command appears in Craft Memory > Command Log.
+- Typed or spoken command appears in Memory > Command Log.
 - Status starts as `proposed`.
 - `Apply` changes status to `applied`.
 - `Reject` changes status to `rejected`.

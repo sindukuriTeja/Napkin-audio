@@ -1,6 +1,6 @@
-# Napkin AI Audio Studio
+# Napkin Audio AI Studio
 
-Napkin AI Audio Studio is a local-first AI audio craft studio for writing, directing, judging, and packaging radio advertising work. It is designed for creative directors, copywriters, producers, sound designers, and agency teams who need a practical studio for script craft, timing, performance, sound design, rough mix planning, QC, and export discipline.
+Napkin Audio AI Studio is a local-first AI audio craft studio for writing, directing, judging, and packaging radio advertising work. It is designed for creative directors, copywriters, producers, sound designers, and agency teams who need a practical studio for script craft, timing, performance, sound design, rough mix planning, QC, and export discipline.
 
 This repo was prepared from the original RA Studio build pack and recreates/improves the earlier `test-codex-2` Broadcast Blueprint Studio direction inside the current Napkin Audio repository.
 
@@ -28,18 +28,20 @@ For ElevenLabs credential setup, use [docs/elevenlabs-setup.md](docs/elevenlabs-
 - Runtime estimator, words-per-second calculation, legal speed risk, and duration warnings.
 - Emotion, comedy, timing, performance, sound design, mix, station delivery, QC, and Craft Quality agents.
 - Voice casting panel with mock take generation.
+- VO Voice Transformer path for approved source recordings, consent confirmation, and ElevenLabs speech-to-speech preview generation.
 - Voice-provider abstraction for `MockVoiceProvider`, `ElevenLabsProvider`, and `NvidiaRivaProvider`.
 - Optional local provider proxy scaffold for server-side provider credentials.
 - Sound world panel and visual timeline.
 - Rough mix control surface.
-- Typed command bar and browser speech-recognition support where available.
+- Audio Director for spoken production decisions, plus typed command fallback.
+- Browser speech-recognition support where available; spoken commands become reviewable Apply/Reject proposals.
 - Apply/reject command proposals, with browser autosave for the current project.
 - Craft Quality Score with sub-scores, strengths, improvements, next craft move, and producer-review guidance.
 - Irish radio export preset and station-spec data with confidence labels.
 - QC checks for duration, mandatories, CTA, legal speed, voice assignment, rights, station specs, and human approval.
 - Export downloads for project JSON, script markdown, cue sheet markdown, QC markdown, Craft Quality markdown, and production notes markdown.
 - Project JSON import for continuing a previously exported package.
-- Craft Memory and version history.
+- Studio Memory, command log, and version history.
 
 ## Architecture
 
@@ -70,7 +72,7 @@ The MVP is deterministic and local-first. Agents accept structured project state
 Copy `.env.example` to `.env` when you add real provider work:
 
 ```env
-VITE_APP_NAME=Napkin AI Audio Studio
+VITE_APP_NAME=Napkin Audio AI Studio
 ELEVENLABS_API_KEY=
 ELEVENLABS_DEFAULT_VOICE_ID=
 NVIDIA_RIVA_ENDPOINT=
@@ -87,6 +89,7 @@ Provider proxy endpoints:
 - `GET /health`
 - `GET /api/providers/status`
 - `POST /api/voice/elevenlabs/preview`
+- `POST /api/voice/elevenlabs/voice-changer`
 - `POST /api/sound/elevenlabs/effect`
 - `POST /api/music/elevenlabs/compose`
 - `POST /api/dubbing/elevenlabs/create`
@@ -94,7 +97,7 @@ Provider proxy endpoints:
 
 ## ElevenLabs
 
-The app includes an ElevenLabs provider path for `voice_id`, `model_id`, text, output format, settings, pronunciation support, continuity context, sound effect prompts, music prompts, and source-URL dubbing jobs. The proxy can return live audio bytes, but the frontend still needs asset persistence and mix rendering before this is a complete production audio workflow.
+The app includes an ElevenLabs provider path for `voice_id`, `model_id`, text, output format, settings, pronunciation support, continuity context, source VO voice transformation, sound effect prompts, music prompts, and source-URL dubbing jobs. The proxy can return live audio bytes, but the frontend still needs asset persistence and mix rendering before this is a complete production audio workflow.
 
 ## NVIDIA Riva / NIM
 
@@ -104,11 +107,11 @@ The NVIDIA Riva adapter is a planned enterprise adapter for streaming/offline sy
 
 The app includes a generic Irish radio package preset and station rows for RTE Radio 1, RTE 2FM, Today FM, Newstalk, FM104, 98FM, Spin, iRadio, Galway Bay FM, Cork's Red FM, Beat, Midlands 103, Highland Radio, LMFM, Sunshine, Classic Hits, Q102, and Other/custom.
 
-Station-specific technical values are deliberately marked `unknown` unless verified. Napkin AI Audio Studio does not fabricate sample rate, loudness, true peak, naming, or delivery requirements. Confirm station traffic specs before dispatch.
+Station-specific technical values are deliberately marked `unknown` unless verified. Napkin Audio AI Studio does not fabricate sample rate, loudness, true peak, naming, or delivery requirements. Confirm station traffic specs before dispatch.
 
 ## Rights and approval
 
-Napkin AI Audio Studio never labels a spot broadcast-ready automatically. QC can say a package is checked or ready for producer review, but only an explicit user action can set `Approved for broadcast`.
+Napkin Audio AI Studio never labels a spot broadcast-ready automatically. QC can say a package is checked or ready for producer review, but only an explicit user action can set `Approved for broadcast`.
 
 Rights records track source, licence status, owner, expiry, territory, channel, notes, and confidence. Unknown or needs-clearance rights are flagged before export.
 

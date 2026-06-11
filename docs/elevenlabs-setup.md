@@ -1,6 +1,6 @@
 # ElevenLabs Setup
 
-Napkin AI Audio Studio is designed so ElevenLabs keys stay server-side. Do not put real API keys into frontend code.
+Napkin Audio AI Studio is designed so ElevenLabs keys stay server-side. Do not put real API keys into frontend code.
 
 ## 1. Create `.env`
 
@@ -38,7 +38,7 @@ Terminal 2:
 npm run dev
 ```
 
-## 3. Verify in Napkin AI Audio Studio
+## 3. Verify in Napkin Audio AI Studio
 
 - Open the app.
 - Switch to Producer Mode.
@@ -56,11 +56,12 @@ Expected result after adding a key:
 The local proxy keeps the API key out of the browser and forwards these routes:
 
 - `POST /api/voice/elevenlabs/preview`
+- `POST /api/voice/elevenlabs/voice-changer`
 - `POST /api/sound/elevenlabs/effect`
 - `POST /api/music/elevenlabs/compose`
 - `POST /api/dubbing/elevenlabs/create`
 
-Voice, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. Dubbing currently supports JSON requests with a public `sourceUrl`; browser file upload and local multipart upload are still future work.
+Voice, VO voice transformation, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. Dubbing currently supports JSON requests with a public `sourceUrl`; saved project assets and final mix rendering are still future work.
 
 ## Current limitation
 

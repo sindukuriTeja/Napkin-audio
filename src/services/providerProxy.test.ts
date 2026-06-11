@@ -7,7 +7,7 @@ describe("frontend provider proxy service", () => {
       elevenLabs: {
         configured: true,
         defaultVoiceIdConfigured: false,
-        capabilities: { speech: true, soundEffects: true, music: true, dubbing: true },
+        capabilities: { speech: true, soundEffects: true, music: true, dubbing: true, voiceChanger: true },
       },
       nvidiaRiva: { configured: false, endpointConfigured: false },
       nvidiaNim: { configured: false },

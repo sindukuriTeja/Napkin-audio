@@ -60,6 +60,7 @@ export const providerStatus = (env = process.env) => ({
       soundEffects: Boolean(env.ELEVENLABS_API_KEY),
       music: Boolean(env.ELEVENLABS_API_KEY),
       dubbing: Boolean(env.ELEVENLABS_API_KEY),
+      voiceChanger: Boolean(env.ELEVENLABS_API_KEY),
     },
   },
   nvidiaRiva: {
@@ -119,6 +120,12 @@ export const validateDubbingRequest = (body) => {
   } catch {
     return "sourceUrl must be a valid URL.";
   }
+  return null;
+};
+
+export const validateVoiceChangerRequest = (request) => {
+  const contentType = request.headers["content-type"] ?? "";
+  if (!contentType.includes("multipart/form-data")) return "Voice changer expects multipart/form-data audio upload.";
   return null;
 };
 
@@ -293,6 +300,39 @@ export const handleElevenLabsDubbing = async (request, response, env = process.e
   return json(response, 200, payload);
 };
 
+export const handleElevenLabsVoiceChanger = async (request, response, env = process.env) => {
+  if (!env.ELEVENLABS_API_KEY) {
+    return json(response, 401, {
+      error: "ELEVENLABS_API_KEY is not configured.",
+      fallback: "Use mock voice takes until credentials are available.",
+    });
+  }
+
+  const validationError = validateVoiceChangerRequest(request);
+  if (validationError) return json(response, 400, { error: validationError });
+
+  const url = new URL(request.url, "http://127.0.0.1");
+  const voiceId = url.searchParams.get("voiceId") ?? env.ELEVENLABS_DEFAULT_VOICE_ID;
+  if (!voiceId) {
+    return json(response, 400, {
+      error: "No voiceId supplied and ELEVENLABS_DEFAULT_VOICE_ID is not configured.",
+    });
+  }
+
+  const outputFormat = url.searchParams.get("outputFormat") ?? "mp3_44100_128";
+  const providerResponse = await fetch(buildElevenLabsUrl(`/speech-to-speech/${encodeURIComponent(voiceId)}`, outputFormat), {
+    method: "POST",
+    headers: {
+      "xi-api-key": env.ELEVENLABS_API_KEY,
+      "Content-Type": request.headers["content-type"],
+    },
+    body: request,
+    duplex: "half",
+  });
+
+  return forwardElevenLabsResponse(providerResponse, response);
+};
+
 export const handleRivaPreview = async (request, response, env = process.env) => {
   if (!(env.NVIDIA_RIVA_ENDPOINT && env.NVIDIA_RIVA_API_KEY)) {
     return json(response, 401, {
@@ -321,7 +361,7 @@ export const createProviderProxyServer = (env = process.env) =>
   try {
     if (request.method === "OPTIONS") return json(response, 204, {});
     if (request.method === "GET" && request.url === "/health") {
-      return json(response, 200, { ok: true, service: "Napkin AI Audio Studio provider proxy" });
+      return json(response, 200, { ok: true, service: "Napkin Audio AI Studio provider proxy" });
     }
     if (request.method === "GET" && request.url === "/api/providers/status") {
       return json(response, 200, providerStatus(env));
@@ -337,6 +377,9 @@ export const createProviderProxyServer = (env = process.env) =>
     }
     if (request.method === "POST" && request.url === "/api/dubbing/elevenlabs/create") {
       return handleElevenLabsDubbing(request, response, env);
+    }
+    if (request.method === "POST" && request.url?.startsWith("/api/voice/elevenlabs/voice-changer")) {
+      return handleElevenLabsVoiceChanger(request, response, env);
     }
     if (request.method === "POST" && request.url === "/api/voice/riva/preview") {
       return handleRivaPreview(request, response, env);
@@ -354,6 +397,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   loadLocalEnv(resolve(process.cwd(), ".env"), process.env, { override: true });
   const server = createProviderProxyServer();
   server.listen(port, "127.0.0.1", () => {
-    console.log(`Napkin AI Audio Studio provider proxy listening on http://127.0.0.1:${port}`);
+    console.log(`Napkin Audio AI Studio provider proxy listening on http://127.0.0.1:${port}`);
   });
 }

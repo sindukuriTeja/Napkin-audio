@@ -250,6 +250,22 @@ export const VoiceCastingAgent = {
       },
     ];
   },
+  elevenLabsSearchBriefs(project: Project) {
+    return project.voiceRoles.map((role) => ({
+      roleId: role.id,
+      roleName: role.roleName,
+      query: [
+        role.accent,
+        role.ageRange,
+        role.emotionalStyle,
+        role.pace === "fast-read" ? "clear legal read" : "natural radio voice",
+        project.brief.tone,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      direction: `${role.characterDescription}. ${role.performanceNotes}`,
+    }));
+  },
 };
 
 export const SoundDesignAgent = {
@@ -296,9 +312,45 @@ export const SoundDesignAgent = {
     ];
     return { soundCues, musicCues, recommendations };
   },
+  productionPrompts(project: Project) {
+    const sfxPrompts = project.soundCues.length
+      ? project.soundCues.map((cue) => `${cue.sfxMoment}. ${cue.texture}. Keep it radio-clear and under dialogue.`)
+      : [
+          `${project.brief.brand} opening sonic hook for a ${project.brief.targetDuration} second Irish radio ad. ${project.brief.sonicLogoNotes || "Clean, memorable, not cluttered."}`,
+        ];
+    const musicPrompt = [
+      `${project.brief.targetDuration} second radio music bed`,
+      project.brief.tone,
+      project.brief.desiredEmotionalResponse,
+      project.brief.energyLevel > 6 ? "medium energy" : "measured energy",
+      "leave space for voiceover, legal copy, CTA, and final brand sting",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return { sfxPrompts, musicPrompt, durationSeconds: project.brief.targetDuration };
+  },
 };
 
 export const MixEngineerAgent = {
+  autoMix(project: Project): Project["mixSettings"] {
+    const hasLegal = project.script.lines.some((line) => line.type === "legal");
+    const hasDenseSfx = project.soundCues.length > 3;
+    return {
+      ...project.mixSettings,
+      voiceLevel: -3,
+      musicLevel: hasLegal ? -20 : -18,
+      sfxLevel: hasDenseSfx ? -14 : -12,
+      compressionIntensity: 48,
+      brightness: 52,
+      warmth: 58,
+      roomSpace: 18,
+      deEssing: 42,
+      noiseBed: 0,
+      finalLimiter: true,
+      loudnessTarget: "Confirm per Irish station; prepare broadcast-safe final master",
+      truePeakTarget: "Confirm per Irish station; keep peak ceiling conservative",
+    };
+  },
   recommendation(project: Project): AgentRecommendation {
     const musicTooLoud = project.mixSettings.musicLevel > project.mixSettings.voiceLevel - 8;
     return {
@@ -490,7 +542,7 @@ export const ComplianceAgent = {
         id: createId("qc"),
         check: "Human approval",
         status: project.approvalStatus === "Approved for broadcast" ? "pass" : "fail",
-        explanation: "Napkin AI Audio Studio never marks work broadcast-ready automatically.",
+        explanation: "Napkin Audio AI Studio never marks work broadcast-ready automatically.",
         recommendedFix: "A user must explicitly approve for broadcast after QC and production review.",
         confidence: "verified",
       },

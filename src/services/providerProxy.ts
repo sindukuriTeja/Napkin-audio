@@ -7,6 +7,7 @@ export interface ProviderStatus {
       soundEffects: boolean;
       music: boolean;
       dubbing: boolean;
+      voiceChanger?: boolean;
     };
   };
   nvidiaRiva: {

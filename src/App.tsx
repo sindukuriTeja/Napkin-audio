@@ -2,7 +2,10 @@ import {
   CheckCircle2,
   Download,
   FileAudio,
+  Languages,
   Mic,
+  Music2,
+  PackageCheck,
   Radio,
   SlidersHorizontal,
   Sparkles,
@@ -10,7 +13,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { parseCommand, ScriptDoctorAgent } from "./agents/studioAgents";
+import { MixEngineerAgent, parseCommand, ScriptDoctorAgent, SoundDesignAgent, VoiceCastingAgent } from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { exportPresets, stationSpecs } from "./data/stationSpecs";
 import {
@@ -29,8 +32,18 @@ import { fetchProviderStatus, providerProxyBaseUrl, type ProviderStatus } from "
 import { MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole } from "./types/models";
 
-const tabs = ["Home", "Brief", "Script", "Voices", "Sound", "Mix", "Craft Quality", "Export", "Craft Memory"] as const;
+const productName = "Napkin Audio AI Studio";
+const tabs = ["Dashboard", "Brief", "Script", "Voices", "Sound Design", "Dubbing", "Mix", "Irish Delivery", "Export", "Memory"] as const;
 type Tab = (typeof tabs)[number];
+
+const workflowSteps: Array<{ tab: Tab; label: string; detail: string }> = [
+  { tab: "Script", label: "Script", detail: "Paste, parse, time" },
+  { tab: "Voices", label: "Voices", detail: "Cast and record" },
+  { tab: "Sound Design", label: "Sound", detail: "SFX, music, sonic logo" },
+  { tab: "Dubbing", label: "Dubbing", detail: "Localise and adapt" },
+  { tab: "Irish Delivery", label: "Delivery", detail: "Station formatting" },
+  { tab: "Export", label: "Export", detail: "Package files" },
+];
 
 const scriptLineTypes: ScriptLineType[] = [
   "voiceover",
@@ -90,8 +103,8 @@ const retimeScript = (script: Project["script"]) => {
 const rawTextFromLines = (lines: Project["script"]["lines"]) =>
   lines.map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text)).join("\n");
 
-const storageKey = "napkin-ai-audio-studio-current-project";
-const legacyStorageKeys = ["ra-studio-current-project"];
+const storageKey = "napkin-audio-ai-studio-current-project";
+const legacyStorageKeys = ["napkin-ai-audio-studio-current-project", "ra-studio-current-project"];
 
 const isProjectLike = (value: unknown): value is Project =>
   Boolean(
@@ -141,15 +154,25 @@ const loadInitialProject = () => {
 
 export function App() {
   const [project, setProject] = useState<Project>(() => loadInitialProject());
-  const [activeTab, setActiveTab] = useState<Tab>("Home");
+  const [activeTab, setActiveTab] = useState<Tab>("Dashboard");
   const [mode, setMode] = useState<"creative" | "producer">("creative");
   const [scriptDraft, setScriptDraft] = useState(project.script.rawText);
   const [commandDraft, setCommandDraft] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [voiceCommandStatus, setVoiceCommandStatus] = useState("Audio Director ready. Speak a production decision or type one below.");
+  const [lastVoiceTranscript, setLastVoiceTranscript] = useState("");
+  const [voiceSourceFile, setVoiceSourceFile] = useState<File | null>(null);
+  const [voiceTransformConsent, setVoiceTransformConsent] = useState(false);
+  const [voiceTransformTargetRoleId, setVoiceTransformTargetRoleId] = useState(project.voiceRoles[0]?.id ?? "");
+  const [voiceTransformMessage, setVoiceTransformMessage] = useState("Upload an approved VO recording to transform it into a directed target voice.");
+  const [voiceTransformAudioUrl, setVoiceTransformAudioUrl] = useState("");
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [providerStatusMessage, setProviderStatusMessage] = useState("Provider proxy not checked yet.");
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
+  const voiceSearchBriefs = useMemo(() => VoiceCastingAgent.elevenLabsSearchBriefs(project), [project]);
+  const productionPrompts = useMemo(() => SoundDesignAgent.productionPrompts(project), [project]);
 
   useEffect(() => {
     setScriptDraft(project.script.rawText);
@@ -179,26 +202,36 @@ export function App() {
     try {
       const parsed = JSON.parse(await file.text());
       if (!isProjectLike(parsed)) {
-        alert("That JSON does not look like a Napkin AI Audio Studio project package.");
+        alert("That JSON does not look like a Napkin Audio AI Studio project package.");
         return;
       }
       const importedProject = recomputeProject(normalizeProject(parsed), `Imported project JSON: ${file.name}`);
       setProject(importedProject);
-      setActiveTab("Home");
+      setActiveTab("Dashboard");
     } catch {
       alert("Could not read that project JSON.");
     }
   };
 
-  const addCommand = () => {
-    if (!commandDraft.trim()) return;
-    const intent = parseCommand(commandDraft, project);
-    setProject((current) => ({ ...current, commandLog: [intent, ...current.commandLog], updatedAt: new Date().toISOString() }));
+  const proposeCommand = (rawCommand: string, source: "typed" | "audio" = "typed") => {
+    const cleanCommand = rawCommand.trim();
+    if (!cleanCommand) return;
+    setProject((current) => ({
+      ...current,
+      commandLog: [parseCommand(cleanCommand, current), ...current.commandLog],
+      updatedAt: new Date().toISOString(),
+    }));
+    if (source === "audio") {
+      setLastVoiceTranscript(cleanCommand);
+      setVoiceCommandStatus("Audio command captured. Review the proposed change in Memory > Command Log.");
+    }
     setCommandDraft("");
   };
 
+  const addCommand = () => proposeCommand(commandDraft);
+
   const startNewProject = () => {
-    if (!window.confirm("Start a new Napkin AI Audio Studio project and replace the browser autosave? Export JSON first if you need the current work.")) {
+    if (!window.confirm("Start a new Napkin Audio AI Studio project and replace the browser autosave? Export JSON first if you need the current work.")) {
       return;
     }
     window.localStorage.removeItem(storageKey);
@@ -206,7 +239,7 @@ export function App() {
     const freshProject = createProject();
     setProject(freshProject);
     setScriptDraft(freshProject.script.rawText);
-    setActiveTab("Home");
+    setActiveTab("Dashboard");
   };
 
   const updateCommandStatus = (commandId: string, status: "applied" | "rejected") => {
@@ -421,6 +454,7 @@ export function App() {
       start: () => void;
       onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
       onerror: (() => void) | null;
+      onend: (() => void) | null;
     };
     const browserWindow = window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
@@ -428,16 +462,23 @@ export function App() {
     };
     const Recognition = browserWindow.SpeechRecognition ?? browserWindow.webkitSpeechRecognition;
     if (!Recognition) {
-      alert("Browser speech recognition is not available here. Typed commands still work.");
+      setVoiceCommandStatus("Browser speech recognition is not available here. Typed commands still work.");
       return;
     }
     const recognition = new Recognition();
     recognition.lang = "en-IE";
+    setIsListening(true);
+    setVoiceCommandStatus("Listening. Say a studio direction, for example: slow down the legal line.");
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setCommandDraft(transcript);
+      proposeCommand(transcript, "audio");
     };
-    recognition.onerror = () => alert("Voice command capture failed. Try typing the command.");
+    recognition.onerror = () => {
+      setIsListening(false);
+      setVoiceCommandStatus("Voice command capture failed. Try again or type the direction.");
+    };
+    recognition.onend = () => setIsListening(false);
     recognition.start();
   };
 
@@ -453,6 +494,51 @@ export function App() {
       takeNumber: project.voiceTakes.length + 1,
     });
     setProject((current) => recomputeProject({ ...current, voiceTakes: [take, ...current.voiceTakes] }, "Mock voice take generated"));
+  };
+
+  const transformVoVoice = async () => {
+    if (!voiceSourceFile) {
+      setVoiceTransformMessage("Add a VO source recording first.");
+      return;
+    }
+    if (!voiceTransformConsent) {
+      setVoiceTransformMessage("Confirm VO consent and usage rights before transforming a voice.");
+      return;
+    }
+    const targetRole = project.voiceRoles.find((role) => role.id === voiceTransformTargetRoleId);
+    const query = new URLSearchParams({ outputFormat: "mp3_44100_128" });
+    if (targetRole?.providerVoiceId) query.set("voiceId", targetRole.providerVoiceId);
+    const formData = new FormData();
+    formData.set("audio", voiceSourceFile);
+    formData.set("model_id", "eleven_multilingual_sts_v2");
+    formData.set("remove_background_noise", "true");
+    setVoiceTransformMessage("Transforming VO through the server proxy...");
+    try {
+      const response = await fetch(`${providerProxyBaseUrl}/api/voice/elevenlabs/voice-changer?${query.toString()}`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        setVoiceTransformMessage(`Voice transform failed (${response.status}). ${detail.slice(0, 160)}`);
+        return;
+      }
+      const audioBlob = await response.blob();
+      if (voiceTransformAudioUrl) URL.revokeObjectURL(voiceTransformAudioUrl);
+      setVoiceTransformAudioUrl(URL.createObjectURL(audioBlob));
+      setVoiceTransformMessage("Transformed VO preview ready. Review performance and rights before using it.");
+    } catch {
+      setVoiceTransformMessage(`Provider proxy unavailable at ${providerProxyBaseUrl}.`);
+    }
+  };
+
+  const applyAutoMix = () => {
+    setProject((current) =>
+      recomputeProject(
+        { ...current, mixSettings: MixEngineerAgent.autoMix(current) },
+        "Producer Assistant auto-mix baseline applied",
+      ),
+    );
   };
 
   const checkProviderStatus = async () => {
@@ -473,16 +559,16 @@ export function App() {
     }
   };
 
-  const exportName = project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "napkin-ai-audio-studio";
+  const exportName = project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "napkin-audio-ai-studio";
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Napkin AI Audio Studio</p>
+          <p className="eyebrow">{productName}</p>
           <h1>{project.brief.projectName}</h1>
           <p className="subhead">
-            AI audio craft studio for radio scripts, performance, sound design, QC, and export discipline.
+            Script-to-station audio production for radio voices, sound design, dubbing, Irish delivery specs, and export packages.
           </p>
         </div>
         <div className="topbar-actions">
@@ -495,7 +581,7 @@ export function App() {
             </button>
           </div>
           <button className="primary" onClick={() => setActiveTab("Script")}>
-            <FileAudio size={18} /> Open Studio
+            <FileAudio size={18} /> Start with script
           </button>
           <button onClick={startNewProject}>New Project</button>
           <label className="file-button">
@@ -513,6 +599,20 @@ export function App() {
         ))}
       </nav>
 
+      <section className="workflow-rail" aria-label="Studio workflow">
+        {workflowSteps.map((step, index) => (
+          <button
+            key={step.tab}
+            className={activeTab === step.tab ? "active" : ""}
+            onClick={() => setActiveTab(step.tab)}
+          >
+            <span>{index + 1}</span>
+            <strong>{step.label}</strong>
+            <small>{step.detail}</small>
+          </button>
+        ))}
+      </section>
+
       <section className="command-bar">
         <Wand2 size={18} />
         <input
@@ -521,19 +621,27 @@ export function App() {
           onKeyDown={(event) => event.key === "Enter" && addCommand()}
           placeholder="Try: Make the ending land, slow down the legal line, add a softer Dublin voice..."
         />
-        <button title="Capture voice command" onClick={startVoiceCommand}>
+        <button title="Talk to Audio Director" className={isListening ? "active" : ""} onClick={startVoiceCommand}>
           <Mic size={18} />
         </button>
         <button onClick={addCommand}>Propose</button>
       </section>
 
-      {activeTab === "Home" && (
+      <section className="audio-director">
+        <div>
+          <strong>Audio Director</strong>
+          <span>{voiceCommandStatus}</span>
+        </div>
+        {lastVoiceTranscript ? <small>Last heard: “{lastVoiceTranscript}”</small> : <small>Voice and typed directions both create reviewable proposals.</small>}
+      </section>
+
+      {activeTab === "Dashboard" && (
         <section className="studio-grid home-grid">
           <div className="hero-panel">
             <div className="hero-copy">
-              <p className="eyebrow">Current project</p>
+              <p className="eyebrow">Studio dashboard</p>
               <h2>{project.brief.brand || "Untitled brand"}</h2>
-              <p>{project.brief.campaign}</p>
+              <p>{project.brief.campaign} · {project.brief.targetDuration}s radio package</p>
             </div>
             <div className="score-orb">
               <span>{project.craftQuality.overallScore}</span>
@@ -553,9 +661,28 @@ export function App() {
           </Panel>
           <Panel title="Next Craft Move" icon={<Sparkles size={18} />}>
             <p className="large-note">{project.craftQuality.nextBestCraftMove}</p>
-            <button className="primary" onClick={() => setActiveTab("Craft Quality")}>
-              Improve craft
+            <button className="primary" onClick={() => setActiveTab("Script")}>
+              Continue production
             </button>
+          </Panel>
+          <Panel title="Workflow Readiness" icon={<PackageCheck size={18} />}>
+            <div className="readiness-list">
+              <Metric label="Script lines" value={String(project.script.lines.length)} />
+              <Metric label="Voice roles" value={String(project.voiceRoles.length)} />
+              <Metric label="SFX cues" value={String(project.soundCues.length)} />
+              <Metric label="QC failures" value={String(project.qcResults.filter((item) => item.status === "fail").length)} />
+            </div>
+          </Panel>
+          <Panel title="Producer Assistant" icon={<Wand2 size={18} />}>
+            <p className="large-note">
+              A production assistant can triage copy, voice, sound design, music length, mix balance, rights, and export readiness.
+            </p>
+            <div className="tool-stack">
+              <button onClick={() => setActiveTab("Voices")}>Find voices</button>
+              <button onClick={() => setActiveTab("Sound Design")}>Build sound brief</button>
+              <button onClick={applyAutoMix}>Auto-mix baseline</button>
+              <button onClick={() => setActiveTab("Irish Delivery")}>Check delivery</button>
+            </div>
           </Panel>
         </section>
       )}
@@ -599,7 +726,7 @@ export function App() {
 
       {activeTab === "Script" && (
         <section className="studio-grid script-layout">
-          <Panel title="Script Editor" icon={<Upload size={18} />}>
+          <Panel title="1. Script Intake" icon={<Upload size={18} />}>
             <div className="upload-row">
               <label className="file-button">
                 Upload .txt / .md
@@ -612,7 +739,7 @@ export function App() {
             </div>
             <textarea className="script-input" value={scriptDraft} onChange={(event) => setScriptDraft(event.target.value)} />
           </Panel>
-          <Panel title="Timing & Parse" icon={<Radio size={18} />}>
+          <Panel title="2. Parse, Timing & Roles" icon={<Radio size={18} />}>
             <Metric label="Estimated runtime" value={`${project.script.estimatedDuration}s`} />
             <Metric label="Words/sec" value={String(project.script.wordsPerSecond)} />
             <p className={project.script.estimatedDuration > project.brief.targetDuration + 2 ? "warning-text" : "good-text"}>
@@ -680,7 +807,7 @@ export function App() {
 
       {activeTab === "Voices" && (
         <section className="studio-grid">
-          <Panel title="Voice Casting" icon={<Mic size={18} />}>
+          <Panel title="3. Voice Selection" icon={<Mic size={18} />}>
             <div className="upload-row">
               <button className="primary" onClick={addVoiceRole}>
                 <Mic size={18} /> Add Voice Role
@@ -733,10 +860,10 @@ export function App() {
               ))}
             </div>
             <button className="primary" onClick={generateMockTake}>
-              Generate mock take record
+              Record mock take
             </button>
           </Panel>
-          <Panel title="Takes" icon={<FileAudio size={18} />}>
+          <Panel title="4. Recording Takes" icon={<FileAudio size={18} />}>
             {project.voiceTakes.length === 0 ? <p>No takes yet. Mock provider is ready without credentials.</p> : null}
             {project.voiceTakes.map((take) => (
               <div className="list-row" key={take.id}>
@@ -775,15 +902,73 @@ export function App() {
               </div>
             )}
           </Panel>
+          <Panel title="ElevenLabs Voice Finder" icon={<Sparkles size={18} />}>
+            {voiceSearchBriefs.map((brief) => (
+              <div className="list-row" key={brief.roleId}>
+                <strong>{brief.roleName}</strong>
+                <span>{brief.query}</span>
+                <small>{brief.direction}</small>
+              </div>
+            ))}
+            <pre className="code-note">
+              Use these as ElevenLabs voice search criteria. The next provider step is listing voices from the proxy and mapping a selected voice_id to each role.
+            </pre>
+          </Panel>
+          <Panel title="VO Voice Transformer" icon={<Mic size={18} />}>
+            <p className="large-note">
+              Use an approved VO source recording as the performance base, then transform it into a target ElevenLabs voice while keeping keys server-side.
+            </p>
+            <label>
+              Target role
+              <select value={voiceTransformTargetRoleId} onChange={(event) => setVoiceTransformTargetRoleId(event.target.value)}>
+                {project.voiceRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.roleName}{role.providerVoiceId ? "" : " (default provider voice)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="file-button">
+              {voiceSourceFile ? voiceSourceFile.name : "Upload VO source audio"}
+              <input
+                type="file"
+                accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg"
+                onChange={(event) => setVoiceSourceFile(event.target.files?.[0] ?? null)}
+              />
+            </label>
+            <label className="consent-row">
+              <input type="checkbox" checked={voiceTransformConsent} onChange={(event) => setVoiceTransformConsent(event.target.checked)} />
+              I have VO consent and rights to transform this recording for this project.
+            </label>
+            <div className="tool-stack">
+              <button className="primary" onClick={transformVoVoice}>Transform VO preview</button>
+              <button onClick={checkProviderStatus}>Check ElevenLabs</button>
+            </div>
+            <small>{voiceTransformMessage}</small>
+            {voiceTransformAudioUrl ? <audio controls src={voiceTransformAudioUrl} /> : null}
+          </Panel>
         </section>
       )}
 
-      {activeTab === "Sound" && (
+      {activeTab === "Sound Design" && (
         <section className="studio-grid">
-          <Panel title="Sound World" icon={<Sparkles size={18} />}>
+          <Panel title="5. SFX Library & Sound Design" icon={<Sparkles size={18} />}>
             <Metric label="Location" value="Scripted world" />
             <Metric label="Texture" value="Natural, restrained, mnemonic-led" />
             <Metric label="Opening hook" value={project.soundCues[0]?.label ?? "Add a stronger sonic hook"} />
+            <div className="tool-stack">
+              <button onClick={() => setCommandDraft("Add a distinctive opening sound hook")}>SFX hook</button>
+              <button onClick={() => setCommandDraft("Make the music more cinematic but keep the voice clear")}>Music bed</button>
+              <button onClick={() => setCommandDraft("Create a clean final brand sting")}>Brand sting</button>
+            </div>
+            <div className="prompt-bank">
+              {productionPrompts.sfxPrompts.map((prompt) => (
+                <div className="list-row" key={prompt}>
+                  <strong>SFX prompt</strong>
+                  <span>{prompt}</span>
+                </div>
+              ))}
+            </div>
             <div className="card-grid">
               {project.soundCues.map((cue) => (
                 <article className="voice-card" key={cue.id}>
@@ -794,7 +979,12 @@ export function App() {
               ))}
             </div>
           </Panel>
-          <Panel title="Timeline" icon={<SlidersHorizontal size={18} />}>
+          <Panel title="Production Timeline" icon={<SlidersHorizontal size={18} />}>
+            <Metric label="Score length" value={`${productionPrompts.durationSeconds}s`} />
+            <div className="list-row">
+              <strong>Music generation brief</strong>
+              <span>{productionPrompts.musicPrompt}</span>
+            </div>
             <div className="timeline">
               {project.timeline.map((block) => (
                 <div
@@ -815,9 +1005,45 @@ export function App() {
         </section>
       )}
 
+      {activeTab === "Dubbing" && (
+        <section className="studio-grid">
+          <Panel title="6. Dubbing & Localisation" icon={<Languages size={18} />}>
+            <Metric label="Source language" value={project.brief.language} />
+            <Metric label="Primary market" value="Ireland / UK radio" />
+            <Metric label="Provider route" value={providerStatus?.elevenLabs.capabilities?.dubbing ? "ElevenLabs ready" : "Proxy check needed"} />
+            <div className="tool-stack">
+              <button onClick={checkProviderStatus}>Check ElevenLabs</button>
+              <button onClick={() => setCommandDraft("Prepare this script for Irish English dubbing")}>Irish English</button>
+              <button onClick={() => setCommandDraft("Prepare this script for UK English dubbing")}>UK English</button>
+            </div>
+            <p className="large-note">
+              Dubbing uses the server proxy so provider keys stay out of the browser. Source-URL dubbing is wired in the backend; file upload and saved audio assets are the next production step.
+            </p>
+          </Panel>
+          <Panel title="Special Effects Access" icon={<Music2 size={18} />}>
+            <div className="readiness-list">
+              <Metric label="SFX route" value={providerStatus?.elevenLabs.capabilities?.soundEffects ? "Ready" : "Mock / unchecked"} />
+              <Metric label="Music route" value={providerStatus?.elevenLabs.capabilities?.music ? "Ready" : "Mock / unchecked"} />
+              <Metric label="Rights status" value={project.rightsRecords.some((record) => record.licenceStatus === "unknown") ? "Needs clearance" : "Tracked"} />
+            </div>
+            <pre className="code-note">
+              Use Producer Mode, check providers, then generate or import approved effects and music. Rights remain flagged until final clearance.
+            </pre>
+          </Panel>
+        </section>
+      )}
+
       {activeTab === "Mix" && (
         <section className="panel">
-          <SectionHeader title="Mix Engineer" detail="Rough mix planning only. Final loudness and true peak need production QC." />
+          <SectionHeader title="7. Mix Engineer" detail="Balance voice, music, SFX, space, and final production intent before station formatting." />
+          <div className="tool-stack">
+            <button className="primary" onClick={applyAutoMix}>Apply auto-mix baseline</button>
+            <button onClick={() => setCommandDraft("Make the mix voice-led and keep legal clear")}>Voice-led mix note</button>
+          </div>
+          <div className="readiness-list">
+            <Metric label="Loudness target" value={project.mixSettings.loudnessTarget} />
+            <Metric label="True peak target" value={project.mixSettings.truePeakTarget} />
+          </div>
           <div className="slider-grid">
             {[
               ["voiceLevel", "Voice level"],
@@ -852,33 +1078,61 @@ export function App() {
         </section>
       )}
 
-      {activeTab === "Craft Quality" && (
+      {activeTab === "Irish Delivery" && (
         <section className="studio-grid">
-          <Panel title="Craft Quality" icon={<Sparkles size={18} />}>
+          <Panel title="8. Irish Radio Formatting" icon={<Radio size={18} />}>
+            <Metric label="Station / group" value={selectedStation.name} />
+            <Metric label="Confidence" value={selectedStation.confidenceLevel} />
+            <Metric label="Preset" value={preset.name} />
+            <div className="export-targets">
+              <label>
+                Station / group
+                <select
+                  value={project.stationSpecId}
+                  onChange={(event) =>
+                    setProject((p) => recomputeProject({ ...p, stationSpecId: event.target.value }, "Station target changed"))
+                  }
+                >
+                  {stationSpecs.map((station) => (
+                    <option key={station.id} value={station.id}>
+                      {station.name} ({station.confidenceLevel})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Export preset
+                <select
+                  value={project.exportPresetId}
+                  onChange={(event) =>
+                    setProject((p) => recomputeProject({ ...p, exportPresetId: event.target.value }, "Export preset changed"))
+                  }
+                >
+                  {exportPresets.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="station-detail">
+              <strong>{selectedStation.name} delivery confidence: {selectedStation.confidenceLevel}</strong>
+              <p>{selectedStation.notes}</p>
+              <small>
+                Format: {selectedStation.acceptedFormats.join(", ")} · Sample rate: {selectedStation.sampleRate} · Loudness:{" "}
+                {selectedStation.loudnessTarget} · True peak: {selectedStation.truePeakCeiling}
+              </small>
+            </div>
+          </Panel>
+          <Panel title="Craft & Compliance Gate" icon={<CheckCircle2 size={18} />}>
             <div className="quality-score">{project.craftQuality.overallScore}</div>
             <h2>{project.craftQuality.scoreBand}</h2>
-            <p className="large-note">
-              {project.craftQuality.overallScore < 75
-                ? "This is not quite ready. One more craft pass recommended."
-                : project.craftQuality.overallScore >= 85
-                  ? "Highly crafted draft. Check production, rights, and final mix before export."
-                  : "Strong enough for producer review. Human approval still required."}
-            </p>
-            <button className="primary">Improve craft</button>
-          </Panel>
-          <Panel title="Suggested Actions" icon={<Wand2 size={18} />}>
-            {craftActions.map((action) => (
+            <p className="large-note">{project.craftQuality.nextBestCraftMove}</p>
+            {craftActions.slice(0, 4).map((action) => (
               <button className="action-row" key={action}>
                 {action}
               </button>
-            ))}
-            <h3>Sub-scores</h3>
-            {project.craftQuality.subScores.map((score) => (
-              <div className="score-row" key={score.label}>
-                <strong>{score.label}</strong>
-                <span>{score.score}/10</span>
-                <small>{score.improvement}</small>
-              </div>
             ))}
           </Panel>
         </section>
@@ -886,7 +1140,7 @@ export function App() {
 
       {activeTab === "Export" && (
         <section className="studio-grid">
-          <Panel title="Export Package" icon={<Download size={18} />}>
+          <Panel title="9. Export Package" icon={<Download size={18} />}>
             <Metric label="Preset" value={preset.name} />
             <Metric label="Station" value={`${selectedStation.name} · ${selectedStation.confidenceLevel}`} />
             <div className="export-targets">
@@ -921,16 +1175,10 @@ export function App() {
                 </select>
               </label>
             </div>
-            {mode === "producer" ? (
-              <div className="station-detail">
-                <strong>{selectedStation.name} delivery confidence: {selectedStation.confidenceLevel}</strong>
-                <p>{selectedStation.notes}</p>
-                <small>
-                  Format: {selectedStation.acceptedFormats.join(", ")} · Sample rate: {selectedStation.sampleRate} · Loudness:{" "}
-                  {selectedStation.loudnessTarget} · True peak: {selectedStation.truePeakCeiling}
-                </small>
-              </div>
-            ) : null}
+            <div className="station-detail">
+              <strong>{selectedStation.name} delivery confidence: {selectedStation.confidenceLevel}</strong>
+              <p>{selectedStation.notes}</p>
+            </div>
             <label>
               Approval status
               <select
@@ -966,9 +1214,9 @@ export function App() {
         </section>
       )}
 
-      {activeTab === "Craft Memory" && (
+      {activeTab === "Memory" && (
         <section className="studio-grid">
-          <Panel title="Craft Memory" icon={<Sparkles size={18} />}>
+          <Panel title="Studio Memory" icon={<Sparkles size={18} />}>
             {project.craftMemory.map((item) => (
               <article className="memory-card" key={item.id}>
                 <h3>{item.title}</h3>

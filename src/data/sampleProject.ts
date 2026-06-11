@@ -65,7 +65,7 @@ const defaultRights = (): RightsRecord[] => [
     id: "rights-mock-voice",
     source: "Mock voice provider",
     licenceStatus: "generated",
-    owner: "Napkin AI Audio Studio mock system",
+    owner: "Napkin Audio AI Studio mock system",
     usageTerritory: "Internal review only",
     usageChannel: "Internal review only",
     notes: "Mock records are not cleared production assets.",

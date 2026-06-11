@@ -9,6 +9,7 @@ import {
   validateDubbingRequest,
   validateMusicRequest,
   validateSoundEffectRequest,
+  validateVoiceChangerRequest,
   validateVoiceRequest,
 } from "./provider-proxy.mjs";
 
@@ -31,6 +32,7 @@ describe("provider proxy helpers", () => {
           soundEffects: true,
           music: true,
           dubbing: true,
+          voiceChanger: true,
         },
       },
       nvidiaRiva: {
@@ -83,15 +85,25 @@ describe("provider proxy helpers", () => {
     expect(validateDubbingRequest({ targetLang: "fr", sourceUrl: "https://example.com/audio.mp3" })).toBeNull();
   });
 
+  it("validates voice changer multipart upload requests", () => {
+    expect(validateVoiceChangerRequest({ headers: { "content-type": "application/json" } })).toBe(
+      "Voice changer expects multipart/form-data audio upload.",
+    );
+    expect(validateVoiceChangerRequest({ headers: { "content-type": "multipart/form-data; boundary=test" } })).toBeNull();
+  });
+
   it("builds ElevenLabs API URLs without exposing credentials", () => {
     expect(buildElevenLabsUrl("/music", "mp3_44100_128")).toBe(
       "https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128",
     );
     expect(buildElevenLabsUrl("/dubbing")).toBe("https://api.elevenlabs.io/v1/dubbing");
+    expect(buildElevenLabsUrl("/speech-to-speech/voice-id", "mp3_44100_128")).toBe(
+      "https://api.elevenlabs.io/v1/speech-to-speech/voice-id?output_format=mp3_44100_128",
+    );
   });
 
   it("loads local .env values without overwriting existing environment values", () => {
-    const dir = mkdtempSync(join(tmpdir(), "napkin-ai-audio-studio-env-"));
+    const dir = mkdtempSync(join(tmpdir(), "napkin-audio-ai-studio-env-"));
     const envPath = join(dir, ".env");
     const env = { ELEVENLABS_API_KEY: "already-set" };
     writeFileSync(
@@ -116,7 +128,7 @@ describe("provider proxy helpers", () => {
   });
 
   it("can let local .env values override inherited shell values for the dev server", () => {
-    const dir = mkdtempSync(join(tmpdir(), "napkin-ai-audio-studio-env-"));
+    const dir = mkdtempSync(join(tmpdir(), "napkin-audio-ai-studio-env-"));
     const envPath = join(dir, ".env");
     const env = { ELEVENLABS_API_KEY: "invalid-inherited-key" };
     writeFileSync(envPath, "ELEVENLABS_API_KEY=real-local-key\n");
