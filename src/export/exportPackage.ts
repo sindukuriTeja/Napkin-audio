@@ -84,12 +84,7 @@ export const productionNotesMarkdown = (project: Project) =>
 
 export const downloadText = (filename: string, content: string) => {
   const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, blob);
 };
 
 export const downloadBlob = (filename: string, blob: Blob) => {
@@ -97,6 +92,11 @@ export const downloadBlob = (filename: string, blob: Blob) => {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, 0);
 };
