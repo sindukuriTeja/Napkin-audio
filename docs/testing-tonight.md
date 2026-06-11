@@ -6,10 +6,13 @@ Use this checklist for a focused manual test session.
 
 ```bash
 npm install
+npm run demo:check
 npm run dev
 ```
 
 Open the local URL shown by Vite, usually `http://127.0.0.1:5173/`.
+
+`npm run demo:check` does not start a local server or call provider APIs. It verifies provider status redaction, the demo-safe mock voice catalog, and the imported RAG knowledge file.
 
 Optional provider proxy smoke test:
 
