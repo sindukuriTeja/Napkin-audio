@@ -30,6 +30,7 @@ import {
   scriptMarkdown,
 } from "./export/exportPackage";
 import { createId } from "./lib/id";
+import { assignVoiceRolesToScript, lineSupportsVoiceRole, voiceRoleIdForLine } from "./lib/scriptRoles";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
 import { fetchProviderStatus, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
 import { MockVoiceProvider } from "./services/voiceProviders";
@@ -129,7 +130,7 @@ const isProjectLike = (value: unknown): value is Project =>
 
 const normalizeProject = (candidate: Project) => {
   const fallback = createProject();
-  return {
+  const normalized = {
     ...fallback,
     ...candidate,
     brief: { ...fallback.brief, ...candidate.brief },
@@ -148,6 +149,10 @@ const normalizeProject = (candidate: Project) => {
     versionHistory: candidate.versionHistory ?? fallback.versionHistory,
     rightsRecords: candidate.rightsRecords ?? fallback.rightsRecords,
   };
+  const repairedVoiceState = assignVoiceRolesToScript(normalized.script, normalized.brief, normalized.voiceRoles, {
+    preserveAssignedRoles: true,
+  });
+  return { ...normalized, ...repairedVoiceState };
 };
 
 const loadInitialProject = () => {
@@ -293,7 +298,7 @@ export function App() {
       const commandLog = current.commandLog.map((item) => (item.id === commandId ? { ...item, status: "applied" as const } : item));
       const targetLines = command.affectedLineIds.length
         ? command.affectedLineIds
-        : current.script.lines.filter((line) => !["music", "sound-effect", "pause", "note"].includes(line.type)).map((line) => line.id);
+        : current.script.lines.filter(lineSupportsVoiceRole).map((line) => line.id);
 
       if (command.intent === "change-voice") {
         const lower = command.rawCommand.toLowerCase();
@@ -396,6 +401,9 @@ export function App() {
       const updatedLines = current.script.lines.map((line) => {
         if (line.id !== lineId) return line;
         const updatedLine = { ...line, ...updates };
+        if (updates.type !== undefined) {
+          updatedLine.assignedVoiceRoleId = voiceRoleIdForLine(updatedLine);
+        }
         if (updates.text !== undefined || updates.type !== undefined) {
           return {
             ...updatedLine,
@@ -404,12 +412,15 @@ export function App() {
         }
         return updatedLine;
       });
-      const script = retimeScript({
+      const retimedScript = retimeScript({
         ...current.script,
         rawText: rawTextFromLines(updatedLines),
         lines: updatedLines,
       });
-      return recomputeProject({ ...current, script, soundCues: [] }, `Line ${currentLine.lineNumber} edited`);
+      const { script, voiceRoles } = assignVoiceRolesToScript(retimedScript, current.brief, current.voiceRoles, {
+        preserveAssignedRoles: true,
+      });
+      return recomputeProject({ ...current, script, voiceRoles, soundCues: [] }, `Line ${currentLine.lineNumber} edited`);
     });
   };
 
@@ -849,7 +860,7 @@ export function App() {
                         <select
                           value={line.assignedVoiceRoleId ?? ""}
                           onChange={(event) => updateScriptLine(line.id, { assignedVoiceRoleId: event.target.value || undefined })}
-                          disabled={["music", "sound-effect", "pause", "note"].includes(line.type)}
+                          disabled={!lineSupportsVoiceRole(line)}
                         >
                           <option value="">Unassigned</option>
                           {project.voiceRoles.map((role) => (
