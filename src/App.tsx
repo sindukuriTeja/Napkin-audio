@@ -33,7 +33,7 @@ import { createId } from "./lib/id";
 import { assignVoiceRolesToScript, lineSupportsVoiceRole, voiceRoleIdForLine } from "./lib/scriptRoles";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
 import { fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
-import { MockVoiceProvider } from "./services/voiceProviders";
+import { generateMockVoicePreviewBlob, MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole, VoiceTake } from "./types/models";
 
 const productName = "Napkin Audio AI Studio";
@@ -542,7 +542,14 @@ export function App() {
       performanceNotes: line.performanceNote,
       takeNumber,
     });
-    return fallbackReason ? { ...take, notes: `${take.notes} Fallback reason: ${fallbackReason}` } : take;
+    return {
+      ...take,
+      audioUrl: URL.createObjectURL(generateMockVoicePreviewBlob(line.text)),
+      settings: { ...take.settings, syntheticPreview: true },
+      notes: fallbackReason
+        ? `Synthetic placeholder audio only. No speech was generated. Fallback reason: ${fallbackReason}`
+        : "Synthetic placeholder audio only. No speech was generated.",
+    };
   };
 
   const generateVoiceTake = async () => {

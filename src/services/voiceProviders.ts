@@ -1,6 +1,52 @@
 import { createId, nowIso } from "../lib/id";
 import type { VoiceProviderConfig, VoiceTake } from "../types/models";
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const writeAscii = (view: DataView, offset: number, value: string) => {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
+};
+
+const textHash = (value: string) =>
+  value.split("").reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0, 2166136261);
+
+export const generateMockVoicePreviewBlob = (text: string) => {
+  const sampleRate = 8000;
+  const durationSeconds = clamp(0.9 + text.trim().split(/\s+/).filter(Boolean).length * 0.035, 1, 3.2);
+  const sampleCount = Math.floor(sampleRate * durationSeconds);
+  const bytesPerSample = 2;
+  const buffer = new ArrayBuffer(44 + sampleCount * bytesPerSample);
+  const view = new DataView(buffer);
+  const primaryFrequency = 360 + (textHash(text) % 180);
+  const secondaryFrequency = primaryFrequency * 1.5;
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + sampleCount * bytesPerSample, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, sampleCount * bytesPerSample, true);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const time = index / sampleRate;
+    const envelope = Math.min(1, time * 12) * Math.min(1, (durationSeconds - time) * 8);
+    const markerPulse = Math.sin(2 * Math.PI * secondaryFrequency * time) * 0.12;
+    const tone = Math.sin(2 * Math.PI * primaryFrequency * time) * 0.26 + markerPulse;
+    view.setInt16(44 + index * bytesPerSample, Math.round(clamp(tone * envelope, -1, 1) * 32767), true);
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+};
+
 export interface VoiceProvider {
   id: VoiceProviderConfig["provider"];
   label: string;
