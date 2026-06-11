@@ -235,6 +235,26 @@ export interface CraftMemoryItem {
   updatedAt: string;
 }
 
+export interface StudioKnowledgeItem {
+  id: string;
+  title: string;
+  topic: string;
+  productionStage: Array<"brief" | "script" | "casting" | "recording" | "sound_design" | "music" | "mix" | "master" | "export" | "compliance">;
+  appliesTo: Array<"radio" | "podcast" | "digital" | "social" | "dubbing" | "music" | "sfx">;
+  summary: string;
+  guidance: string[];
+  keywords: string[];
+  source: string;
+  reliability: "seed" | "imported" | "verified";
+}
+
+export interface StudioKnowledgeHit {
+  item: StudioKnowledgeItem;
+  score: number;
+  matchedKeywords: string[];
+  reason: string;
+}
+
 export interface CraftSubScore {
   label: string;
   score: number;

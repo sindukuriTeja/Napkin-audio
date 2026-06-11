@@ -18,7 +18,14 @@ import {
   Wand2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { MixEngineerAgent, parseCommand, ScriptDoctorAgent, SoundDesignAgent, VoiceCastingAgent } from "./agents/studioAgents";
+import {
+  MixEngineerAgent,
+  parseCommand,
+  ScriptDoctorAgent,
+  SoundDesignAgent,
+  StudioKnowledgeAgent,
+  VoiceCastingAgent,
+} from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { exportPresets, stationSpecs } from "./data/stationSpecs";
 import {
@@ -196,6 +203,7 @@ export function App() {
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
+  const knowledgeHits = useMemo(() => StudioKnowledgeAgent.retrieve(project), [project]);
   const voiceSearchBriefs = useMemo(() => VoiceCastingAgent.elevenLabsSearchBriefs(project), [project]);
   const productionPrompts = useMemo(() => SoundDesignAgent.productionPrompts(project), [project]);
   const transportDuration = Math.max(project.brief.targetDuration, project.script.estimatedDuration, 1);
@@ -850,12 +858,20 @@ export function App() {
               <Metric label="Voice roles" value={String(project.voiceRoles.length)} />
               <Metric label="SFX cues" value={String(project.soundCues.length)} />
               <Metric label="QC failures" value={String(project.qcResults.filter((item) => item.status === "fail").length)} />
+              <Metric label="Knowledge hits" value={String(knowledgeHits.length)} />
             </div>
           </Panel>
           <Panel title="Producer Assistant" icon={<Wand2 size={18} />}>
             <p className="large-note">
-              A production assistant can triage copy, voice, sound design, music length, mix balance, rights, and export readiness.
+              A production assistant can triage copy, voice, sound design, music length, mix balance, rights, export readiness, and retrieve studio guidance.
             </p>
+            {knowledgeHits.slice(0, 2).map((hit) => (
+              <div className="list-row" key={hit.item.id}>
+                <strong>{hit.item.title}</strong>
+                <span>{hit.reason}</span>
+                <small>{hit.item.guidance[0]}</small>
+              </div>
+            ))}
             <div className="tool-stack">
               <button onClick={() => setActiveTab("Voices")}>Find voices</button>
               <button onClick={() => setActiveTab("Sound Design")}>Build sound brief</button>
@@ -1425,6 +1441,21 @@ export function App() {
                 <h3>{item.title}</h3>
                 <p>{item.principle}</p>
                 <small>{item.example}</small>
+              </article>
+            ))}
+          </Panel>
+          <Panel title="Studio Knowledge" icon={<Radio size={18} />}>
+            {knowledgeHits.length === 0 ? <p>No matching knowledge found for this project yet.</p> : null}
+            {knowledgeHits.map((hit) => (
+              <article className="memory-card" key={hit.item.id}>
+                <h3>{hit.item.title}</h3>
+                <p>{hit.item.summary}</p>
+                <small>{hit.reason} Source: {hit.item.source}.</small>
+                <ul>
+                  {hit.item.guidance.slice(0, 3).map((guidance) => (
+                    <li key={guidance}>{guidance}</li>
+                  ))}
+                </ul>
               </article>
             ))}
           </Panel>

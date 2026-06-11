@@ -1,4 +1,5 @@
 import { createId, nowIso } from "../lib/id";
+import { studioKnowledgeItems } from "../data/studioKnowledge";
 import { assignLineTimings, countWords, durationDiagnosis, estimateLineDuration, totalDuration, wordsPerSecond } from "../lib/timing";
 import type {
   AgentRecommendation,
@@ -12,6 +13,7 @@ import type {
   ScriptLine,
   ScriptLineType,
   SoundCue,
+  StudioKnowledgeHit,
   TimelineBlock,
   VoiceRole,
 } from "../types/models";
@@ -288,6 +290,54 @@ export const VoiceCastingAgent = {
         .join(", "),
       direction: `${role.characterDescription}. ${role.performanceNotes}`,
     }));
+  },
+};
+
+const tokenizeForRetrieval = (value: string) =>
+  new Set(
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((word) => word.length > 2),
+  );
+
+export const StudioKnowledgeAgent = {
+  retrieve(project: Project, limit = 4): StudioKnowledgeHit[] {
+    const queryParts = [
+      project.brief.category,
+      project.brief.tone,
+      project.brief.audience,
+      project.brief.desiredEmotionalResponse,
+      project.brief.brandVoiceNotes,
+      project.script.estimatedDuration > project.brief.targetDuration + 2 ? "timing duration overcrowded script" : "",
+      project.script.lines.map((line) => `${line.type} ${line.speaker ?? ""} ${line.text}`).join(" "),
+      project.voiceRoles.map((role) => `${role.roleName} ${role.accent} ${role.emotionalStyle} ${role.pace}`).join(" "),
+      project.qcResults.filter((result) => result.status !== "pass").map((result) => `${result.check} ${result.explanation}`).join(" "),
+      project.agentRecommendations.map((recommendation) => `${recommendation.agentName} ${recommendation.title}`).join(" "),
+    ];
+    const tokens = tokenizeForRetrieval(queryParts.join(" "));
+
+    return studioKnowledgeItems
+      .map((item) => {
+        const matchedKeywords = item.keywords.filter((keyword) => {
+          const keywordTokens = [...tokenizeForRetrieval(keyword)];
+          return keywordTokens.some((token) => tokens.has(token));
+        });
+        const stageScore = item.productionStage.filter((stage) => tokens.has(stage.replace("_", "")) || tokens.has(stage)).length;
+        const score = matchedKeywords.length * 3 + stageScore + (project.brief.stationGroup.includes("irish") && item.appliesTo.includes("radio") ? 1 : 0);
+        return {
+          item,
+          score,
+          matchedKeywords,
+          reason: matchedKeywords.length
+            ? `Matched ${matchedKeywords.slice(0, 4).join(", ")}.`
+            : `Useful ${item.topic.toLowerCase()} guidance for this production stage.`,
+        };
+      })
+      .filter((hit) => hit.score > 0)
+      .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
+      .slice(0, limit);
   },
 };
 

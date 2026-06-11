@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ComplianceAgent, ScriptParserAgent } from "./studioAgents";
+import { ComplianceAgent, ScriptParserAgent, StudioKnowledgeAgent } from "./studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "../data/sampleProject";
 
 describe("ScriptParserAgent", () => {
@@ -107,5 +107,21 @@ MNEMONIC: Napkin Fresh. Sorted.`,
     expect(updated.scriptLocked).toBe(true);
     expect(updated.script.rawText).toBe(locked.script.rawText);
     expect(updated.script.lines.map((line) => line.text)).toEqual(locked.script.lines.map((line) => line.text));
+  });
+
+  it("retrieves local studio knowledge for producer guidance", () => {
+    const project = createProject();
+    const updated = updateScriptFromText(
+      project,
+      `VOICEOVER 1: This is a deliberately long radio script that keeps adding clauses because we need to test whether the assistant notices timing pressure and gives useful production advice before recording starts.
+LEGAL: Subject to availability, terms and conditions apply, over 18s only, representative example and eligibility criteria apply.
+MNEMONIC: Napkin Audio. Sorted.`,
+    );
+    const hits = StudioKnowledgeAgent.retrieve(updated);
+
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.map((hit) => hit.item.title)).toEqual(
+      expect.arrayContaining(["Radio script timing guardrails", "Voice-led mix baseline"]),
+    );
   });
 });

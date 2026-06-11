@@ -19,6 +19,8 @@ Use `New Project` in the header to clear the browser autosave after exporting JS
 
 For ElevenLabs credential setup, use [docs/elevenlabs-setup.md](docs/elevenlabs-setup.md).
 
+For the current local studio knowledge retrieval layer, use [docs/rag-knowledge.md](docs/rag-knowledge.md).
+
 ## What is included
 
 - Vite, React, and TypeScript app.
@@ -36,6 +38,7 @@ For ElevenLabs credential setup, use [docs/elevenlabs-setup.md](docs/elevenlabs-
 - Audio Director for spoken production decisions, plus typed command fallback.
 - Browser speech-recognition support where available; spoken commands become reviewable Apply/Reject proposals.
 - Apply/reject command proposals, with browser autosave for the current project.
+- Local seed RAG-style studio knowledge retrieval for timing, casting, sound design, mix, export QC, and compliance guidance.
 - Craft Quality Score with sub-scores, strengths, improvements, next craft move, and producer-review guidance.
 - Irish radio export preset and station-spec data with confidence labels.
 - QC checks for duration, mandatories, CTA, legal speed, voice assignment, rights, station specs, and human approval.
@@ -54,6 +57,7 @@ src/
   data/
     sampleProject.ts
     stationSpecs.ts
+    studioKnowledge.ts
   export/
     exportPackage.ts
   lib/
@@ -128,6 +132,7 @@ It does not claim awards performance, guaranteed effectiveness, or automatic bro
 - ElevenLabs live calls require the local provider proxy plus a configured key and plan access; NVIDIA Riva and NIM remain scaffolds.
 - Loudness, true peak, clipping, file format, head/tail silence, and station compliance checks are placeholders until production audio analysis is added.
 - Station specifications remain unverified and must be confirmed with current station delivery requirements.
+- Studio knowledge retrieval is currently local keyword scoring over seed chunks, not a full external vector RAG pipeline.
 
 ## Next development phases
 
@@ -138,3 +143,4 @@ It does not claim awards performance, guaranteed effectiveness, or automatic bro
 5. Add station-spec verification workflow and dated source links.
 6. Add real asset-rights intake for uploaded SFX/music.
 7. Add automated tests around parser, QC, and Craft Quality scoring.
+8. Add Manus knowledge-pack ingestion and optional embedding/vector search.
