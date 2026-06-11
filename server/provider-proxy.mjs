@@ -44,11 +44,22 @@ export const json = (response, statusCode, body) => {
   response.end(JSON.stringify(body, null, 2));
 };
 
+export class InvalidJsonBodyError extends Error {
+  constructor() {
+    super("Request body must be valid JSON.");
+    this.name = "InvalidJsonBodyError";
+  }
+}
+
 export const readJson = async (request) => {
   const chunks = [];
   for await (const chunk of request) chunks.push(chunk);
   if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new InvalidJsonBodyError();
+  }
 };
 
 export const providerStatus = (env = process.env) => ({
@@ -386,6 +397,9 @@ export const createProviderProxyServer = (env = process.env) =>
     }
     return json(response, 404, { error: "Not found" });
   } catch (error) {
+    if (error instanceof InvalidJsonBodyError) {
+      return json(response, 400, { error: error.message });
+    }
     return json(response, 500, {
       error: "Provider proxy error",
       detail: error instanceof Error ? error.message : "Unknown error",

@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import {
   buildElevenLabsUrl,
+  InvalidJsonBodyError,
   loadLocalEnv,
   providerStatus,
+  readJson,
   validateDubbingRequest,
   validateMusicRequest,
   validateSoundEffectRequest,
@@ -52,6 +55,10 @@ describe("provider proxy helpers", () => {
     expect(validateVoiceRequest({ text: "" })).toBe("Missing required text.");
     expect(validateVoiceRequest({ text: "x".repeat(5001) })).toBe("Text is too long for a single preview request.");
     expect(validateVoiceRequest({ text: "A short line for preview." })).toBeNull();
+  });
+
+  it("reports malformed JSON request bodies as a bad request", async () => {
+    await expect(readJson(Readable.from(["{not-json"]))).rejects.toBeInstanceOf(InvalidJsonBodyError);
   });
 
   it("validates ElevenLabs sound effect requests", () => {
