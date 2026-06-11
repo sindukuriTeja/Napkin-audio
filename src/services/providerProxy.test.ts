@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { fetchProviderStatus, providerProxyBaseUrl } from "./providerProxy";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl } from "./providerProxy";
 
 describe("frontend provider proxy service", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("fetches provider status from the configured proxy URL", async () => {
     const status = {
       elevenLabs: {
@@ -32,5 +36,38 @@ describe("frontend provider proxy service", () => {
     );
 
     await expect(fetchProviderStatus()).rejects.toThrow("Provider proxy returned 503");
+  });
+
+  it("generates an ElevenLabs speech preview through the server proxy", async () => {
+    const audioBlob = new Blob(["audio"], { type: "audio/mpeg" });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => audioBlob,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateElevenLabsSpeechPreview({ text: "Read this line", voiceId: "voice-123" })).resolves.toBe(audioBlob);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${providerProxyBaseUrl}/api/voice/elevenlabs/preview`,
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: expect.stringContaining("voice-123"),
+      }),
+    );
+  });
+
+  it("surfaces provider errors from JSON responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ error: "ELEVENLABS_API_KEY is not configured." }),
+      }),
+    );
+
+    await expect(generateElevenLabsSpeechPreview({ text: "Read this line" })).rejects.toThrow("ELEVENLABS_API_KEY is not configured.");
   });
 });

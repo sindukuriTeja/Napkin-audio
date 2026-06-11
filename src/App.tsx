@@ -32,9 +32,9 @@ import {
 import { createId } from "./lib/id";
 import { assignVoiceRolesToScript, lineSupportsVoiceRole, voiceRoleIdForLine } from "./lib/scriptRoles";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
-import { fetchProviderStatus, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
+import { fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
 import { MockVoiceProvider } from "./services/voiceProviders";
-import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole } from "./types/models";
+import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole, VoiceTake } from "./types/models";
 
 const productName = "Napkin Audio AI Studio";
 const tabs = ["Dashboard", "Brief", "Script", "Voices", "Sound Design", "Dubbing", "Mix", "Irish Delivery", "Export", "Memory"] as const;
@@ -136,7 +136,9 @@ const normalizeProject = (candidate: Project) => {
     brief: { ...fallback.brief, ...candidate.brief },
     script: { ...fallback.script, ...candidate.script, lines: candidate.script?.lines ?? fallback.script.lines },
     voiceRoles: candidate.voiceRoles ?? fallback.voiceRoles,
-    voiceTakes: candidate.voiceTakes ?? fallback.voiceTakes,
+    voiceTakes: (candidate.voiceTakes ?? fallback.voiceTakes).map((take) =>
+      take.audioUrl?.startsWith("blob:") ? { ...take, audioUrl: undefined, notes: `${take.notes} Preview audio expired after browser reload.` } : take,
+    ),
     soundCues: candidate.soundCues ?? fallback.soundCues,
     musicCues: candidate.musicCues ?? fallback.musicCues,
     timeline: candidate.timeline ?? fallback.timeline,
@@ -182,6 +184,8 @@ export function App() {
   const [voiceTransformTargetRoleId, setVoiceTransformTargetRoleId] = useState(project.voiceRoles[0]?.id ?? "");
   const [voiceTransformMessage, setVoiceTransformMessage] = useState("Upload an approved VO recording to transform it into a directed target voice.");
   const [voiceTransformAudioUrl, setVoiceTransformAudioUrl] = useState("");
+  const [voiceTakeMessage, setVoiceTakeMessage] = useState("Generate a take from the first assigned script line. ElevenLabs is used when the proxy and key are ready.");
+  const [isGeneratingVoiceTake, setIsGeneratingVoiceTake] = useState(false);
   const [transportTime, setTransportTime] = useState(0);
   const [isTransportPlaying, setIsTransportPlaying] = useState(false);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
@@ -529,18 +533,67 @@ export function App() {
     recognition.start();
   };
 
-  const generateMockTake = async () => {
+  const mockTakeForLine = async (line: Project["script"]["lines"][number], takeNumber: number, fallbackReason?: string) => {
     const provider = new MockVoiceProvider();
-    const firstLine = project.script.lines.find((line) => line.assignedVoiceRoleId);
-    if (!firstLine?.assignedVoiceRoleId) return;
     const take = await provider.generateTake({
-      roleId: firstLine.assignedVoiceRoleId,
-      lineId: firstLine.id,
-      text: firstLine.text,
-      performanceNotes: firstLine.performanceNote,
-      takeNumber: project.voiceTakes.length + 1,
+      roleId: line.assignedVoiceRoleId!,
+      lineId: line.id,
+      text: line.text,
+      performanceNotes: line.performanceNote,
+      takeNumber,
     });
-    setProject((current) => recomputeProject({ ...current, voiceTakes: [take, ...current.voiceTakes] }, "Mock voice take generated"));
+    return fallbackReason ? { ...take, notes: `${take.notes} Fallback reason: ${fallbackReason}` } : take;
+  };
+
+  const generateVoiceTake = async () => {
+    const firstLine = project.script.lines.find((line) => line.assignedVoiceRoleId);
+    if (!firstLine?.assignedVoiceRoleId) {
+      setVoiceTakeMessage("No assigned voice line found. Parse or assign a voice before generating a take.");
+      return;
+    }
+    const role = project.voiceRoles.find((item) => item.id === firstLine.assignedVoiceRoleId);
+    const takeNumber = project.voiceTakes.length + 1;
+    setIsGeneratingVoiceTake(true);
+    setVoiceTakeMessage("Generating voice take...");
+    try {
+      const audioBlob = await generateElevenLabsSpeechPreview({
+        text: firstLine.text,
+        voiceId: role?.providerVoiceId,
+        voiceSettings: {
+          stability: role?.pace === "fast-read" ? 0.42 : 0.55,
+          similarity_boost: 0.78,
+          style: role?.emotionalStyle.toLowerCase().includes("warm") ? 0.18 : 0.08,
+          use_speaker_boost: true,
+        },
+      });
+      const take: VoiceTake = {
+        id: createId("take"),
+        roleId: firstLine.assignedVoiceRoleId,
+        lineId: firstLine.id,
+        takeNumber,
+        provider: "elevenlabs",
+        settings: {
+          modelId: "eleven_multilingual_v2",
+          outputFormat: "mp3_44100_128",
+          roleName: role?.roleName ?? "Assigned voice",
+        },
+        performanceNotes: firstLine.performanceNote,
+        audioUrl: URL.createObjectURL(audioBlob),
+        isMock: false,
+        isPreferred: false,
+        notes: "ElevenLabs preview generated through the server proxy. Review rights and performance before production use.",
+        createdAt: new Date().toISOString(),
+      };
+      setProject((current) => recomputeProject({ ...current, voiceTakes: [take, ...current.voiceTakes] }, "ElevenLabs voice take generated"));
+      setVoiceTakeMessage("ElevenLabs voice take generated and ready to preview.");
+    } catch (error) {
+      const fallbackReason = error instanceof Error ? error.message : "Provider unavailable.";
+      const take = await mockTakeForLine(firstLine, takeNumber, fallbackReason);
+      setProject((current) => recomputeProject({ ...current, voiceTakes: [take, ...current.voiceTakes] }, "Mock voice take generated"));
+      setVoiceTakeMessage(`Mock take generated. ElevenLabs was not used: ${fallbackReason}`);
+    } finally {
+      setIsGeneratingVoiceTake(false);
+    }
   };
 
   const transformVoVoice = async () => {
@@ -952,16 +1005,19 @@ export function App() {
                 </article>
               ))}
             </div>
-            <button className="primary" onClick={generateMockTake}>
-              Record mock take
+            <button className="primary" onClick={generateVoiceTake} disabled={isGeneratingVoiceTake}>
+              {isGeneratingVoiceTake ? "Generating..." : "Generate voice take"}
             </button>
+            <small>{voiceTakeMessage}</small>
           </Panel>
           <Panel title="4. Recording Takes" icon={<FileAudio size={18} />}>
             {project.voiceTakes.length === 0 ? <p>No takes yet. Mock provider is ready without credentials.</p> : null}
             {project.voiceTakes.map((take) => (
               <div className="list-row" key={take.id}>
-                <strong>Take {take.takeNumber}</strong>
+                <strong>Take {take.takeNumber} · {take.provider}{take.isMock ? " mock" : ""}</strong>
                 <span>{take.notes}</span>
+                {take.audioUrl ? <audio controls src={take.audioUrl} /> : null}
+                <small>{take.performanceNotes}</small>
               </div>
             ))}
             {mode === "producer" && (

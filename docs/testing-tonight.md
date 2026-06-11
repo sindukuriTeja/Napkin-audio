@@ -37,7 +37,9 @@ curl http://127.0.0.1:8787/api/providers/status
 - Timing updates and warnings are understandable.
 - Legal lines show clear performance guidance.
 - Irish Delivery shows Craft Quality score, score band, suggested actions, and recommendation.
-- Voices tab shows voice roles and can generate a mock take record.
+- Voices tab shows voice roles and can generate a voice take.
+- Without the provider proxy or keys, voice take generation falls back to a mock take record with a clear reason.
+- With `npm run server` and valid ElevenLabs values in `.env`, voice take generation returns an audio preview through the server proxy.
 - Voice roles can be added and edited.
 - VO Voice Transformer requires consent before attempting a provider preview.
 - Sound Design shows sound cues, SFX/music controls, and visual timeline.
@@ -79,11 +81,11 @@ For each command:
 
 ## Known Non-Goals For Tonight
 
-- Do not expect real audio generation.
 - Do not expect real mastering, loudness, clipping, or true peak analysis.
 - Do not expect verified station delivery specs.
 - Do not enter real API keys into the frontend.
 - Do not treat mock voice takes as production assets.
+- Do not expect generated preview audio to survive a browser reload; exportable asset persistence is still future work.
 
 ## Issue Notes
 
