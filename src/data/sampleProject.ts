@@ -91,6 +91,7 @@ export const createProject = (brief: Brief = defaultBrief(), rawScript = default
     id: createId("project"),
     brief,
     script: assignedScript,
+    scriptLocked: false,
     voiceRoles,
     voiceTakes: [],
     soundCues: [],
@@ -185,6 +186,7 @@ export const recomputeProject = (project: Project, summary = "Studio state refre
     snapshot: {
       brief: withQc.brief,
       script: withQc.script,
+      scriptLocked: withQc.scriptLocked,
       voiceRoles: withQc.voiceRoles,
       soundCues: withQc.soundCues,
       musicCues: withQc.musicCues,
@@ -200,6 +202,7 @@ export const recomputeProject = (project: Project, summary = "Studio state refre
 };
 
 export const updateScriptFromText = (project: Project, rawScript: string) => {
+  if (project.scriptLocked) return project;
   const parsed = ScriptParserAgent.parse(rawScript, project.brief.targetDuration);
   const { script, voiceRoles } = assignVoiceRolesToScript(parsed, project.brief, project.voiceRoles);
   return recomputeProject({ ...project, script, voiceRoles, soundCues: [], musicCues: [] }, "Script parsed");

@@ -286,7 +286,7 @@ export interface VersionEntry {
   summary: string;
   createdAt: string;
   preferred: boolean;
-  snapshot: Pick<Project, "brief" | "script" | "voiceRoles" | "soundCues" | "musicCues" | "mixSettings" | "approvalStatus">;
+  snapshot: Pick<Project, "brief" | "script" | "scriptLocked" | "voiceRoles" | "soundCues" | "musicCues" | "mixSettings" | "approvalStatus">;
 }
 
 export interface RightsRecord {
@@ -305,6 +305,7 @@ export interface Project {
   id: string;
   brief: Brief;
   script: RadioScript;
+  scriptLocked: boolean;
   voiceRoles: VoiceRole[];
   voiceTakes: VoiceTake[];
   soundCues: SoundCue[];

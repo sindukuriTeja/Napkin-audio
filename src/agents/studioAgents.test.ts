@@ -98,4 +98,14 @@ MNEMONIC: Napkin Fresh. Sorted.`,
     expect(refreshed.versionHistory).toHaveLength(project.versionHistory.length);
     expect(refreshed.craftQuality.overallScore).toBeGreaterThan(0);
   });
+
+  it("does not reparse scripts while the project script is locked", () => {
+    const project = createProject();
+    const locked = recomputeProject({ ...project, scriptLocked: true }, "Script locked");
+    const updated = updateScriptFromText(locked, "ANNOUNCER: This replacement should not be applied.");
+
+    expect(updated.scriptLocked).toBe(true);
+    expect(updated.script.rawText).toBe(locked.script.rawText);
+    expect(updated.script.lines.map((line) => line.text)).toEqual(locked.script.lines.map((line) => line.text));
+  });
 });

@@ -3,6 +3,7 @@ import {
   Download,
   FileAudio,
   Languages,
+  Lock,
   Mic,
   Music2,
   PackageCheck,
@@ -12,6 +13,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
+  Unlock,
   Upload,
   Wand2,
 } from "lucide-react";
@@ -135,6 +137,7 @@ const normalizeProject = (candidate: Project) => {
     ...candidate,
     brief: { ...fallback.brief, ...candidate.brief },
     script: { ...fallback.script, ...candidate.script, lines: candidate.script?.lines ?? fallback.script.lines },
+    scriptLocked: candidate.scriptLocked ?? fallback.scriptLocked,
     voiceRoles: candidate.voiceRoles ?? fallback.voiceRoles,
     voiceTakes: (candidate.voiceTakes ?? fallback.voiceTakes).map((take) =>
       take.audioUrl?.startsWith("blob:") ? { ...take, audioUrl: undefined, notes: `${take.notes} Preview audio expired after browser reload.` } : take,
@@ -233,6 +236,10 @@ export function App() {
 
   const handleScriptUpload = async (file?: File) => {
     if (!file) return;
+    if (project.scriptLocked) {
+      alert("Script is locked. Unlock it before uploading or replacing script text.");
+      return;
+    }
     if (!file.name.endsWith(".txt") && !file.name.endsWith(".md")) {
       alert("This MVP accepts .txt and .md uploads. Paste DOCX text for now.");
       return;
@@ -299,6 +306,14 @@ export function App() {
     setProject((current) => {
       const command = current.commandLog.find((item) => item.id === commandId);
       if (!command || command.status !== "proposed") return current;
+      const scriptChangingIntents = ["remove-sfx", "slow-legal", "improve-ending", "tighten-script", "performance-note"];
+      if (current.scriptLocked && scriptChangingIntents.includes(command.intent)) {
+        return {
+          ...current,
+          commandLog: current.commandLog.map((item) => (item.id === commandId ? { ...item, status: "rejected" as const } : item)),
+          updatedAt: new Date().toISOString(),
+        };
+      }
       const commandLog = current.commandLog.map((item) => (item.id === commandId ? { ...item, status: "applied" as const } : item));
       const targetLines = command.affectedLineIds.length
         ? command.affectedLineIds
@@ -398,6 +413,7 @@ export function App() {
 
   const updateScriptLine = (lineId: string, updates: Partial<Project["script"]["lines"][number]>) => {
     setProject((current) => {
+      if (current.scriptLocked) return current;
       const currentLine = current.script.lines.find((line) => line.id === lineId);
       if (!currentLine) return current;
       const hasChange = Object.entries(updates).some(([key, value]) => currentLine[key as keyof typeof currentLine] !== value);
@@ -430,6 +446,7 @@ export function App() {
 
   const addScriptLine = () => {
     setProject((current) => {
+      if (current.scriptLocked) return current;
       const newLine: Project["script"]["lines"][number] = {
         id: createId("line"),
         lineNumber: current.script.lines.length + 1,
@@ -455,6 +472,7 @@ export function App() {
 
   const deleteScriptLine = (lineId: string) => {
     setProject((current) => {
+      if (current.scriptLocked) return current;
       if (current.script.lines.length <= 1) return current;
       const line = current.script.lines.find((item) => item.id === lineId);
       const lines = current.script.lines.filter((item) => item.id !== lineId);
@@ -481,6 +499,15 @@ export function App() {
       };
       return recomputeProject({ ...current, voiceRoles: [...current.voiceRoles, voiceRole] }, "Voice role added");
     });
+  };
+
+  const toggleScriptLock = () => {
+    setProject((current) =>
+      recomputeProject(
+        { ...current, scriptLocked: !current.scriptLocked },
+        current.scriptLocked ? "Script unlocked for editing" : "Script locked against editing",
+      ),
+    );
   };
 
   const updateVoiceRole = (roleId: string, updates: Partial<VoiceRole>) => {
@@ -880,16 +907,30 @@ export function App() {
         <section className="studio-grid script-layout">
           <Panel title="1. Script Intake" icon={<Upload size={18} />}>
             <div className="upload-row">
-              <label className="file-button">
+              <button className={project.scriptLocked ? "" : "primary"} onClick={toggleScriptLock}>
+                {project.scriptLocked ? <Unlock size={18} /> : <Lock size={18} />}
+                {project.scriptLocked ? "Unlock script" : "Lock script"}
+              </button>
+              <label className="file-button" aria-disabled={project.scriptLocked}>
                 Upload .txt / .md
-                <input type="file" accept=".txt,.md,text/plain,text/markdown" onChange={(event) => handleScriptUpload(event.target.files?.[0])} />
+                <input
+                  type="file"
+                  accept=".txt,.md,text/plain,text/markdown"
+                  disabled={project.scriptLocked}
+                  onChange={(event) => handleScriptUpload(event.target.files?.[0])}
+                />
               </label>
-              <button className="primary" onClick={() => setProject((p) => updateScriptFromText(p, scriptDraft))}>
+              <button className="primary" disabled={project.scriptLocked} onClick={() => setProject((p) => updateScriptFromText(p, scriptDraft))}>
                 Parse script
               </button>
-              <button onClick={addScriptLine}>Add Line</button>
+              <button disabled={project.scriptLocked} onClick={addScriptLine}>Add Line</button>
             </div>
-            <textarea className="script-input" value={scriptDraft} onChange={(event) => setScriptDraft(event.target.value)} />
+            <p className={project.scriptLocked ? "good-text" : "large-note"}>
+              {project.scriptLocked
+                ? "Script is locked. Unlock it before editing, reparsing, uploading, adding, or deleting lines."
+                : "Script is editable. Lock it before recording or client review to prevent accidental changes."}
+            </p>
+            <textarea className="script-input" value={scriptDraft} readOnly={project.scriptLocked} onChange={(event) => setScriptDraft(event.target.value)} />
           </Panel>
           <Panel title="2. Parse, Timing & Roles" icon={<Radio size={18} />}>
             <Metric label="Estimated runtime" value={`${project.script.estimatedDuration}s`} />
@@ -907,7 +948,11 @@ export function App() {
                     <div className="line-controls">
                       <label>
                         Type
-                        <select value={line.type} onChange={(event) => updateScriptLine(line.id, { type: event.target.value as ScriptLineType })}>
+                        <select
+                          value={line.type}
+                          disabled={project.scriptLocked}
+                          onChange={(event) => updateScriptLine(line.id, { type: event.target.value as ScriptLineType })}
+                        >
                           {scriptLineTypes.map((type) => (
                             <option key={type} value={type}>
                               {type}
@@ -920,7 +965,7 @@ export function App() {
                         <select
                           value={line.assignedVoiceRoleId ?? ""}
                           onChange={(event) => updateScriptLine(line.id, { assignedVoiceRoleId: event.target.value || undefined })}
-                          disabled={!lineSupportsVoiceRole(line)}
+                          disabled={project.scriptLocked || !lineSupportsVoiceRole(line)}
                         >
                           <option value="">Unassigned</option>
                           {project.voiceRoles.map((role) => (
@@ -930,7 +975,7 @@ export function App() {
                           ))}
                         </select>
                       </label>
-                      <button className="danger-button" onClick={() => deleteScriptLine(line.id)} disabled={project.script.lines.length <= 1}>
+                      <button className="danger-button" onClick={() => deleteScriptLine(line.id)} disabled={project.scriptLocked || project.script.lines.length <= 1}>
                         Delete
                       </button>
                       <button onClick={() => jumpTransportToLine(line.startTime)}>Cue</button>
@@ -939,12 +984,14 @@ export function App() {
                     <textarea
                       className="line-textarea"
                       defaultValue={line.text}
+                      readOnly={project.scriptLocked}
                       onBlur={(event) => updateScriptLine(line.id, { text: event.target.value })}
                     />
                     <small>{line.startTime.toFixed(1)}-{line.endTime.toFixed(1)}s · {line.emotionalIntent.join(", ")} · {line.performanceNote}</small>
                     <textarea
                       className="line-note"
                       defaultValue={line.performanceNote}
+                      readOnly={project.scriptLocked}
                       onBlur={(event) => updateScriptLine(line.id, { performanceNote: event.target.value })}
                     />
                     {line.warnings.map((warning) => (
