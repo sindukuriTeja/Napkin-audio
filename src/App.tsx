@@ -6,9 +6,12 @@ import {
   Mic,
   Music2,
   PackageCheck,
+  Pause,
+  Play,
   Radio,
   SlidersHorizontal,
   Sparkles,
+  Square,
   Upload,
   Wand2,
 } from "lucide-react";
@@ -103,6 +106,14 @@ const retimeScript = (script: Project["script"]) => {
 const rawTextFromLines = (lines: Project["script"]["lines"]) =>
   lines.map((line) => (line.speaker ? `${line.speaker}: ${line.text}` : line.text)).join("\n");
 
+const formatTimecode = (seconds: number) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const secs = Math.floor(safeSeconds % 60);
+  const tenths = Math.floor((safeSeconds % 1) * 10);
+  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${tenths}`;
+};
+
 const storageKey = "napkin-audio-ai-studio-current-project";
 const legacyStorageKeys = ["napkin-ai-audio-studio-current-project", "ra-studio-current-project"];
 
@@ -166,6 +177,8 @@ export function App() {
   const [voiceTransformTargetRoleId, setVoiceTransformTargetRoleId] = useState(project.voiceRoles[0]?.id ?? "");
   const [voiceTransformMessage, setVoiceTransformMessage] = useState("Upload an approved VO recording to transform it into a directed target voice.");
   const [voiceTransformAudioUrl, setVoiceTransformAudioUrl] = useState("");
+  const [transportTime, setTransportTime] = useState(0);
+  const [isTransportPlaying, setIsTransportPlaying] = useState(false);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [providerStatusMessage, setProviderStatusMessage] = useState("Provider proxy not checked yet.");
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
@@ -173,10 +186,33 @@ export function App() {
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
   const voiceSearchBriefs = useMemo(() => VoiceCastingAgent.elevenLabsSearchBriefs(project), [project]);
   const productionPrompts = useMemo(() => SoundDesignAgent.productionPrompts(project), [project]);
+  const transportDuration = Math.max(project.brief.targetDuration, project.script.estimatedDuration, 1);
+  const activeTransportLine =
+    project.script.lines.find((line) => transportTime >= line.startTime && transportTime <= line.endTime) ??
+    project.script.lines.find((line) => line.startTime >= transportTime) ??
+    project.script.lines[project.script.lines.length - 1];
+  const transportProgress = Math.min(100, (transportTime / transportDuration) * 100);
 
   useEffect(() => {
     setScriptDraft(project.script.rawText);
   }, [project.script.rawText]);
+
+  useEffect(() => {
+    setTransportTime((current) => Math.min(current, transportDuration));
+  }, [transportDuration]);
+
+  useEffect(() => {
+    if (!isTransportPlaying) return;
+    const startedAt = performance.now();
+    const originTime = transportTime;
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = (performance.now() - startedAt) / 1000;
+      const nextTime = Math.min(transportDuration, originTime + elapsedSeconds);
+      setTransportTime(nextTime);
+      if (nextTime >= transportDuration) setIsTransportPlaying(false);
+    }, 80);
+    return () => window.clearInterval(timer);
+  }, [isTransportPlaying, transportDuration, transportTime]);
 
   useEffect(() => {
     try {
@@ -541,6 +577,16 @@ export function App() {
     );
   };
 
+  const stopTransport = () => {
+    setIsTransportPlaying(false);
+    setTransportTime(0);
+  };
+
+  const jumpTransportToLine = (startTime: number) => {
+    setTransportTime(Math.min(startTime, transportDuration));
+    setIsTransportPlaying(false);
+  };
+
   const checkProviderStatus = async () => {
     setProviderStatusMessage("Checking provider proxy...");
     try {
@@ -633,6 +679,41 @@ export function App() {
           <span>{voiceCommandStatus}</span>
         </div>
         {lastVoiceTranscript ? <small>Last heard: “{lastVoiceTranscript}”</small> : <small>Voice and typed directions both create reviewable proposals.</small>}
+      </section>
+
+      <section className="studio-transport" aria-label="Studio ad timer">
+        <div className="transport-clock">
+          <span>Studio clock</span>
+          <strong>{formatTimecode(transportTime)}</strong>
+          <small>/{formatTimecode(transportDuration)}</small>
+        </div>
+        <div className="transport-controls">
+          <button className="primary" onClick={() => setIsTransportPlaying((current) => !current)}>
+            {isTransportPlaying ? <Pause size={18} /> : <Play size={18} />}
+            {isTransportPlaying ? "Pause" : "Play"}
+          </button>
+          <button onClick={stopTransport}>
+            <Square size={16} /> Stop
+          </button>
+        </div>
+        <div className="transport-progress">
+          <button
+            aria-label="Jump along ad timeline"
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const ratio = (event.clientX - rect.left) / Math.max(rect.width, 1);
+              setTransportTime(Math.max(0, Math.min(transportDuration, ratio * transportDuration)));
+              setIsTransportPlaying(false);
+            }}
+          >
+            <span style={{ width: `${transportProgress}%` }} />
+          </button>
+          <small>
+            {activeTransportLine
+              ? `Line ${activeTransportLine.lineNumber}: ${(activeTransportLine.speaker ?? activeTransportLine.type).toString()}`
+              : "No parsed line selected"}
+          </small>
+        </div>
       </section>
 
       {activeTab === "Dashboard" && (
@@ -749,7 +830,7 @@ export function App() {
             </p>
             <div className="line-list">
               {project.script.lines.map((line) => (
-                <article className="script-line" key={line.id}>
+                <article className={`script-line ${activeTransportLine?.id === line.id ? "current" : ""}`} key={line.id}>
                   <span>{line.lineNumber}</span>
                   <div>
                     <div className="line-controls">
@@ -781,6 +862,7 @@ export function App() {
                       <button className="danger-button" onClick={() => deleteScriptLine(line.id)} disabled={project.script.lines.length <= 1}>
                         Delete
                       </button>
+                      <button onClick={() => jumpTransportToLine(line.startTime)}>Cue</button>
                     </div>
                     <strong>{line.speaker ?? line.type}</strong>
                     <textarea
