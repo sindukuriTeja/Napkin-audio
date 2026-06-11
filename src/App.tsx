@@ -215,6 +215,7 @@ export function App() {
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
   const knowledgeHits = useMemo(() => StudioKnowledgeAgent.retrieve(project), [project]);
+  const audioQualityHits = useMemo(() => StudioKnowledgeAgent.audioQualityGuidance(project), [project]);
   const voiceSearchBriefs = useMemo(() => VoiceCastingAgent.elevenLabsSearchBriefs(project), [project]);
   const productionPrompts = useMemo(() => SoundDesignAgent.productionPrompts(project), [project]);
   const transportDuration = Math.max(project.brief.targetDuration, project.script.estimatedDuration, 1);
@@ -1346,6 +1347,7 @@ export function App() {
           <div className="readiness-list">
             <Metric label="Loudness target" value={project.mixSettings.loudnessTarget} />
             <Metric label="True peak target" value={project.mixSettings.truePeakTarget} />
+            <Metric label="Audio RAG hits" value={String(audioQualityHits.length)} />
           </div>
           <div className="slider-grid">
             {[
@@ -1376,6 +1378,21 @@ export function App() {
                   }
                 />
               </label>
+            ))}
+          </div>
+          <div className="rag-guidance">
+            <div className="section-header compact">
+              <div>
+                <h2>Audio Quality RAG</h2>
+                <p>Mix, mastering, loudness, music, and SFX guidance retrieved from the imported audio knowledge pack.</p>
+              </div>
+            </div>
+            {audioQualityHits.map((hit) => (
+              <div className="list-row" key={hit.item.id}>
+                <strong>{hit.item.title}</strong>
+                <span>{hit.item.guidance[0]}</span>
+                <small>{hit.reason}</small>
+              </div>
             ))}
           </div>
         </section>

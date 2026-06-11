@@ -342,6 +342,38 @@ export const StudioKnowledgeAgent = {
       .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
       .slice(0, limit);
   },
+  audioQualityGuidance(project: Project, limit = 5): StudioKnowledgeHit[] {
+    const audioStages = new Set(["sound_design", "music", "mix", "master", "export"]);
+    const audioTerms = new Set(["audio", "mix", "mixing", "mastering", "loudness", "true peak", "voice", "music", "sfx", "de-essing", "export"]);
+    const genericHitsById = new Map(this.retrieve(project, 24).map((hit) => [hit.item.id, hit]));
+    const priorityTitles = new Map([
+      ["Audio Mixing And Mastering", 12],
+      ["Loudness Export Targets Table", 10],
+      ["Mix Problem Diagnosis Table", 9],
+      ["Radio Ad Production Standards", 6],
+      ["Final Export Qa Table", 5],
+    ]);
+
+    return studioKnowledgeItems
+      .filter((item) => item.productionStage.some((stage) => audioStages.has(stage)))
+      .map((item): StudioKnowledgeHit => {
+        const genericHit = genericHitsById.get(item.id);
+        const matchedKeywords = item.keywords.filter((keyword) => audioTerms.has(keyword.toLowerCase()) || genericHit?.matchedKeywords.includes(keyword));
+        const audioKeywordScore = matchedKeywords.length;
+        const stageScore = item.productionStage.filter((stage) => audioStages.has(stage)).length;
+        const score = (genericHit?.score ?? 0) + stageScore * 2 + audioKeywordScore + (priorityTitles.get(item.title) ?? 0);
+        return {
+          item,
+          score,
+          matchedKeywords,
+          reason: genericHit
+            ? `${genericHit.reason} Audio-quality RAG match for ${item.productionStage.join(", ")}.`
+            : `Audio-quality RAG fallback for ${item.productionStage.join(", ")}.`,
+        };
+      })
+      .sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title))
+      .slice(0, limit);
+  },
 };
 
 export const SoundDesignAgent = {

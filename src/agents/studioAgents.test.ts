@@ -138,4 +138,20 @@ CTA: Visit Napkin Audio today.`,
     expect(hits.some((hit) => hit.item.reliability === "imported")).toBe(true);
     expect(hits.map((hit) => hit.item.title)).toEqual(expect.arrayContaining(["Audio Mixing And Mastering"]));
   });
+
+  it("prioritizes imported audio RAG for mix quality decisions", () => {
+    const project = updateScriptFromText(
+      createProject(),
+      `VOICEOVER 1: Keep the offer and call to action easy to hear.
+MUSIC: Energetic music bed under the script.
+SFX: Short transition into the brand.
+LEGAL: Terms and conditions apply.`,
+    );
+    const hits = StudioKnowledgeAgent.audioQualityGuidance(project);
+
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.some((hit) => hit.item.reliability === "imported")).toBe(true);
+    expect(hits.map((hit) => hit.item.productionStage).flat()).toEqual(expect.arrayContaining(["mix"]));
+    expect(hits.map((hit) => hit.item.title)).toEqual(expect.arrayContaining(["Audio Mixing And Mastering"]));
+  });
 });
