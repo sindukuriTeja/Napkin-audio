@@ -1,6 +1,7 @@
 import type { StudioKnowledgeItem } from "../types/models";
+import { importedStudioKnowledgeItems } from "./importedStudioKnowledge";
 
-export const studioKnowledgeItems: StudioKnowledgeItem[] = [
+export const seedStudioKnowledgeItems: StudioKnowledgeItem[] = [
   {
     id: "knowledge-script-timing-30",
     title: "Radio script timing guardrails",
@@ -98,3 +99,5 @@ export const studioKnowledgeItems: StudioKnowledgeItem[] = [
     reliability: "seed",
   },
 ];
+
+export const studioKnowledgeItems: StudioKnowledgeItem[] = [...seedStudioKnowledgeItems, ...importedStudioKnowledgeItems];

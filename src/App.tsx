@@ -41,7 +41,14 @@ import {
 import { createId } from "./lib/id";
 import { assignVoiceRolesToScript, lineSupportsVoiceRole, voiceRoleIdForLine } from "./lib/scriptRoles";
 import { assignLineTimings, estimateLineDuration, totalDuration, wordsPerSecond } from "./lib/timing";
-import { fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl, type ProviderStatus } from "./services/providerProxy";
+import {
+  fetchElevenLabsVoices,
+  fetchProviderStatus,
+  generateElevenLabsSpeechPreview,
+  providerProxyBaseUrl,
+  type ProviderStatus,
+  type ProviderVoice,
+} from "./services/providerProxy";
 import { generateMockVoicePreviewBlob, MockVoiceProvider } from "./services/voiceProviders";
 import type { ApprovalStatus, Brief, Project, ScriptLineType, VoiceRole, VoiceTake } from "./types/models";
 
@@ -186,6 +193,7 @@ export function App() {
   const [mode, setMode] = useState<"creative" | "producer">("creative");
   const [scriptDraft, setScriptDraft] = useState(project.script.rawText);
   const [commandDraft, setCommandDraft] = useState("");
+  const [latestProposal, setLatestProposal] = useState<Project["commandLog"][number] | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceCommandStatus, setVoiceCommandStatus] = useState("Audio Director ready. Speak a production decision or type one below.");
   const [lastVoiceTranscript, setLastVoiceTranscript] = useState("");
@@ -200,6 +208,9 @@ export function App() {
   const [isTransportPlaying, setIsTransportPlaying] = useState(false);
   const [providerStatus, setProviderStatus] = useState<ProviderStatus | null>(null);
   const [providerStatusMessage, setProviderStatusMessage] = useState("Provider proxy not checked yet.");
+  const [providerVoices, setProviderVoices] = useState<ProviderVoice[]>([]);
+  const [providerVoicesMessage, setProviderVoicesMessage] = useState("Load the provider voice catalog to map roles quickly.");
+  const [isLoadingProviderVoices, setIsLoadingProviderVoices] = useState(false);
   const selectedStation = stationSpecs.find((station) => station.id === project.stationSpecId) ?? stationSpecs[0];
   const preset = exportPresets.find((item) => item.id === project.exportPresetId) ?? exportPresets[0];
   const craftActions = useMemo(() => ScriptDoctorAgent.actions(project), [project]);
@@ -276,14 +287,21 @@ export function App() {
   const proposeCommand = (rawCommand: string, source: "typed" | "audio" = "typed") => {
     const cleanCommand = rawCommand.trim();
     if (!cleanCommand) return;
-    setProject((current) => ({
-      ...current,
-      commandLog: [parseCommand(cleanCommand, current), ...current.commandLog],
-      updatedAt: new Date().toISOString(),
-    }));
+    try {
+      const proposal = parseCommand(cleanCommand, project);
+      setLatestProposal(proposal);
+      setProject((current) => ({
+        ...current,
+        commandLog: [proposal, ...current.commandLog],
+        updatedAt: new Date().toISOString(),
+      }));
+      setVoiceCommandStatus(`Director received: "${cleanCommand}". Review the proposal below.`);
+    } catch {
+      setLatestProposal(null);
+      setVoiceCommandStatus("No proposal generated. Try rephrasing your direction.");
+    }
     if (source === "audio") {
       setLastVoiceTranscript(cleanCommand);
-      setVoiceCommandStatus("Audio command captured. Review the proposed change in Memory > Command Log.");
     }
     setCommandDraft("");
   };
@@ -534,6 +552,42 @@ export function App() {
     });
   };
 
+  const loadProviderVoices = async () => {
+    setIsLoadingProviderVoices(true);
+    setProviderVoicesMessage("Loading provider voices...");
+    try {
+      const voices = await fetchElevenLabsVoices();
+      setProviderVoices(voices);
+      const source = voices.some((voice) => voice.source === "elevenlabs") ? "ElevenLabs" : "mock";
+      setProviderVoicesMessage(`${voices.length} ${source} voice option${voices.length === 1 ? "" : "s"} loaded.`);
+    } catch (error) {
+      setProviderVoices([]);
+      setProviderVoicesMessage(error instanceof Error ? error.message : "Could not load provider voices.");
+    } finally {
+      setIsLoadingProviderVoices(false);
+    }
+  };
+
+  const assignProviderVoiceToRole = (roleId: string, voiceId: string) => {
+    const voice = providerVoices.find((item) => item.voiceId === voiceId);
+    if (!voice) {
+      updateVoiceRole(roleId, {
+        provider: "mock",
+        providerVoiceId: undefined,
+        rightsNotes: "Mock voice only. Confirm usage rights before production.",
+      });
+      return;
+    }
+    updateVoiceRole(roleId, {
+      provider: voice.source === "elevenlabs" ? "elevenlabs" : "mock",
+      providerVoiceId: voice.voiceId,
+      rightsNotes:
+        voice.source === "elevenlabs"
+          ? `Mapped to ElevenLabs voice ${voice.name}. Confirm rights, plan access, and client approval before production.`
+          : `Mock casting reference: ${voice.name}. Select a real ElevenLabs voice before production.`,
+    });
+  };
+
   const startVoiceCommand = () => {
     type SpeechRecognitionCtor = new () => {
       lang: string;
@@ -600,7 +654,7 @@ export function App() {
     try {
       const audioBlob = await generateElevenLabsSpeechPreview({
         text: firstLine.text,
-        voiceId: role?.providerVoiceId,
+        voiceId: role?.provider === "elevenlabs" ? role.providerVoiceId : undefined,
         voiceSettings: {
           stability: role?.pace === "fast-read" ? 0.42 : 0.55,
           similarity_boost: 0.78,
@@ -649,7 +703,7 @@ export function App() {
     }
     const targetRole = project.voiceRoles.find((role) => role.id === voiceTransformTargetRoleId);
     const query = new URLSearchParams({ outputFormat: "mp3_44100_128" });
-    if (targetRole?.providerVoiceId) query.set("voiceId", targetRole.providerVoiceId);
+    if (targetRole?.provider === "elevenlabs" && targetRole.providerVoiceId) query.set("voiceId", targetRole.providerVoiceId);
     const formData = new FormData();
     formData.set("audio", voiceSourceFile);
     formData.set("model_id", "eleven_multilingual_sts_v2");
@@ -778,6 +832,14 @@ export function App() {
         </button>
         <button onClick={addCommand}>Propose</button>
       </section>
+
+      {latestProposal ? (
+        <section className="proposal-card">
+          <strong>{latestProposal.intent === "unknown" ? "Producer note" : latestProposal.intent.replace(/-/g, " ")}</strong>
+          <p>{latestProposal.proposedChange}</p>
+          <small>{latestProposal.affectedLineIds.length ? `${latestProposal.affectedLineIds.length} line(s) affected.` : "No specific line targeted yet."}</small>
+        </section>
+      ) : null}
 
       <section className="audio-director">
         <div>
@@ -1122,15 +1184,37 @@ export function App() {
             )}
           </Panel>
           <Panel title="ElevenLabs Voice Finder" icon={<Sparkles size={18} />}>
+            <div className="provider-status-header">
+              <strong>Voice catalog</strong>
+              <button onClick={loadProviderVoices} disabled={isLoadingProviderVoices}>
+                {isLoadingProviderVoices ? "Loading..." : "Load voices"}
+              </button>
+            </div>
+            <p>{providerVoicesMessage}</p>
             {voiceSearchBriefs.map((brief) => (
               <div className="list-row" key={brief.roleId}>
                 <strong>{brief.roleName}</strong>
                 <span>{brief.query}</span>
                 <small>{brief.direction}</small>
+                <label>
+                  Provider voice
+                  <select
+                    value={project.voiceRoles.find((role) => role.id === brief.roleId)?.providerVoiceId ?? ""}
+                    onChange={(event) => assignProviderVoiceToRole(brief.roleId, event.target.value)}
+                    disabled={providerVoices.length === 0}
+                  >
+                    <option value="">Use default / unassigned</option>
+                    {providerVoices.map((voice) => (
+                      <option key={voice.voiceId} value={voice.voiceId}>
+                        {voice.name} · {voice.source}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             ))}
             <pre className="code-note">
-              Use these as ElevenLabs voice search criteria. The next provider step is listing voices from the proxy and mapping a selected voice_id to each role.
+              With an ElevenLabs key, this loads real provider voices through the server proxy. Without a key, it loads mock casting references so the demo workflow still works.
             </pre>
           </Panel>
           <Panel title="VO Voice Transformer" icon={<Mic size={18} />}>

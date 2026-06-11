@@ -117,11 +117,25 @@ MNEMONIC: Napkin Fresh. Sorted.`,
 LEGAL: Subject to availability, terms and conditions apply, over 18s only, representative example and eligibility criteria apply.
 MNEMONIC: Napkin Audio. Sorted.`,
     );
-    const hits = StudioKnowledgeAgent.retrieve(updated);
+    const hits = StudioKnowledgeAgent.retrieve(updated, 12);
 
     expect(hits.length).toBeGreaterThan(0);
     expect(hits.map((hit) => hit.item.title)).toEqual(
-      expect.arrayContaining(["Radio script timing guardrails", "Voice-led mix baseline"]),
+      expect.arrayContaining(["Script Timing And Copy Editing", "Audio Mixing And Mastering"]),
     );
+  });
+
+  it("includes imported RAG knowledge in producer retrieval", () => {
+    const project = updateScriptFromText(
+      createProject(),
+      `VOICEOVER 1: We need a clear radio ad that will work in cars and on phones.
+MUSIC: Sparse bed under the offer.
+LEGAL: Terms and conditions apply.
+CTA: Visit Napkin Audio today.`,
+    );
+    const hits = StudioKnowledgeAgent.retrieve(project, 12);
+
+    expect(hits.some((hit) => hit.item.reliability === "imported")).toBe(true);
+    expect(hits.map((hit) => hit.item.title)).toEqual(expect.arrayContaining(["Audio Mixing And Mastering"]));
   });
 });

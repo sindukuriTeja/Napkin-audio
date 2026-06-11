@@ -55,6 +55,7 @@ src/
   agents/
     studioAgents.ts
   data/
+    importedStudioKnowledge.ts
     sampleProject.ts
     stationSpecs.ts
     studioKnowledge.ts
@@ -67,6 +68,8 @@ src/
     voiceProviders.ts
   types/
     models.ts
+scripts/
+  import-napkin-rag.mjs
 ```
 
 The MVP is deterministic and local-first. Agents accept structured project state and return structured recommendations. They do not overwrite user work automatically. Provider interfaces are present so real services can replace the local heuristics later.
@@ -92,6 +95,7 @@ Provider proxy endpoints:
 
 - `GET /health`
 - `GET /api/providers/status`
+- `GET /api/voice/elevenlabs/voices`
 - `POST /api/voice/elevenlabs/preview`
 - `POST /api/voice/elevenlabs/voice-changer`
 - `POST /api/sound/elevenlabs/effect`
@@ -132,7 +136,7 @@ It does not claim awards performance, guaranteed effectiveness, or automatic bro
 - ElevenLabs live calls require the local provider proxy plus a configured key and plan access; NVIDIA Riva and NIM remain scaffolds.
 - Loudness, true peak, clipping, file format, head/tail silence, and station compliance checks are placeholders until production audio analysis is added.
 - Station specifications remain unverified and must be confirmed with current station delivery requirements.
-- Studio knowledge retrieval is currently local keyword scoring over seed chunks, not a full external vector RAG pipeline.
+- Studio knowledge retrieval is currently local keyword scoring over seed and imported Manus chunks, not a full external vector RAG pipeline.
 
 ## Next development phases
 

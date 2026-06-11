@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl } from "./providerProxy";
+import { fetchElevenLabsVoices, fetchProviderStatus, generateElevenLabsSpeechPreview, providerProxyBaseUrl } from "./providerProxy";
 
 describe("frontend provider proxy service", () => {
   afterEach(() => {
@@ -36,6 +36,38 @@ describe("frontend provider proxy service", () => {
     );
 
     await expect(fetchProviderStatus()).rejects.toThrow("Provider proxy returned 503");
+  });
+
+  it("fetches provider voice catalog from the proxy", async () => {
+    const voices = [
+      {
+        voiceId: "voice-123",
+        name: "Radio Voice",
+        labels: { accent: "Irish" },
+        source: "elevenlabs",
+      },
+    ];
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ voices }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchElevenLabsVoices()).resolves.toEqual(voices);
+    expect(fetchMock).toHaveBeenCalledWith(`${providerProxyBaseUrl}/api/voice/elevenlabs/voices`);
+  });
+
+  it("surfaces voice catalog provider errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ error: "Voice catalog failed." }),
+      }),
+    );
+
+    await expect(fetchElevenLabsVoices()).rejects.toThrow("Voice catalog failed.");
   });
 
   it("generates an ElevenLabs speech preview through the server proxy", async () => {

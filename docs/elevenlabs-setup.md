@@ -60,10 +60,13 @@ If the key, default voice, or proxy is missing, the same button creates a mock t
 The local proxy keeps the API key out of the browser and forwards these routes:
 
 - `POST /api/voice/elevenlabs/preview`
+- `GET /api/voice/elevenlabs/voices`
 - `POST /api/voice/elevenlabs/voice-changer`
 - `POST /api/sound/elevenlabs/effect`
 - `POST /api/music/elevenlabs/compose`
 - `POST /api/dubbing/elevenlabs/create`
+
+Voice catalog loading returns real ElevenLabs voices when a key is configured. Without a key, it returns a mock catalog so role mapping can still be demonstrated locally.
 
 Voice, VO voice transformation, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. The Voices tab can save the speech preview into the current browser session as a take. Dubbing currently supports JSON requests with a public `sourceUrl`; durable audio asset storage and final mix rendering are still future work.
 

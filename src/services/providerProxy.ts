@@ -19,6 +19,16 @@ export interface ProviderStatus {
   };
 }
 
+export interface ProviderVoice {
+  voiceId: string;
+  name: string;
+  category?: string;
+  description?: string;
+  previewUrl?: string;
+  labels: Record<string, string>;
+  source: "mock" | "elevenlabs";
+}
+
 export const providerProxyBaseUrl =
   import.meta.env.VITE_PROVIDER_PROXY_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8787";
 
@@ -28,6 +38,16 @@ export const fetchProviderStatus = async (): Promise<ProviderStatus> => {
     throw new Error(`Provider proxy returned ${response.status}`);
   }
   return response.json() as Promise<ProviderStatus>;
+};
+
+export const fetchElevenLabsVoices = async (): Promise<ProviderVoice[]> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/voice/elevenlabs/voices`);
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  const payload = await response.json();
+  if (!payload || typeof payload !== "object" || !Array.isArray(payload.voices)) return [];
+  return payload.voices as ProviderVoice[];
 };
 
 export interface ElevenLabsSpeechPreviewRequest {

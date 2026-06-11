@@ -7,6 +7,36 @@ const port = Number(process.env.PORT ?? 8787);
 
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
 
+export const mockElevenLabsVoices = [
+  {
+    voiceId: "mock-warm-irish-announcer",
+    name: "Mock Warm Irish Announcer",
+    category: "mock",
+    description: "Warm, clear, radio-friendly Irish announcer for safe demos without credentials.",
+    previewUrl: "",
+    labels: { accent: "neutral Irish", age: "30-50", style: "warm, direct" },
+    source: "mock",
+  },
+  {
+    voiceId: "mock-dry-character",
+    name: "Mock Dry Character",
+    category: "mock",
+    description: "Grounded character lane for conversational or lightly comic scripts.",
+    previewUrl: "",
+    labels: { accent: "Dublin", age: "25-45", style: "deadpan, natural" },
+    source: "mock",
+  },
+  {
+    voiceId: "mock-legal-clear",
+    name: "Mock Legal Clear Read",
+    category: "mock",
+    description: "Measured legal or mandatory read reference with clarity ahead of speed.",
+    previewUrl: "",
+    labels: { accent: "neutral Irish", age: "30-60", style: "measured, clear" },
+    source: "mock",
+  },
+];
+
 const corsHeaders = () => ({
   "Access-Control-Allow-Origin": process.env.CORS_ORIGIN ?? "http://127.0.0.1:5173",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
@@ -144,6 +174,19 @@ const outputQuery = (outputFormat) => (isNonEmptyString(outputFormat) ? `?output
 
 export const buildElevenLabsUrl = (path, outputFormat) => `${ELEVENLABS_API_BASE}${path}${outputQuery(outputFormat)}`;
 
+export const normalizeElevenLabsVoices = (payload, source = "elevenlabs") => {
+  const voices = Array.isArray(payload?.voices) ? payload.voices : [];
+  return voices.map((voice) => ({
+    voiceId: String(voice.voice_id ?? voice.voiceId ?? ""),
+    name: String(voice.name ?? "Untitled voice"),
+    category: voice.category ? String(voice.category) : undefined,
+    description: voice.description ? String(voice.description) : undefined,
+    previewUrl: voice.preview_url ? String(voice.preview_url) : voice.previewUrl ? String(voice.previewUrl) : undefined,
+    labels: voice.labels && typeof voice.labels === "object" ? voice.labels : {},
+    source,
+  })).filter((voice) => voice.voiceId);
+};
+
 const forwardElevenLabsResponse = async (providerResponse, response, fallbackContentType = "audio/mpeg") => {
   const contentType = providerResponse.headers.get("content-type") ?? fallbackContentType;
   const passThroughHeaders = {
@@ -178,6 +221,39 @@ const elevenLabsJsonRequest = ({ env, path, outputFormat, body }) =>
     },
     body: JSON.stringify(body),
   });
+
+export const handleElevenLabsVoices = async (_request, response, env = process.env) => {
+  if (!env.ELEVENLABS_API_KEY) {
+    return json(response, 200, {
+      source: "mock",
+      warning: "ELEVENLABS_API_KEY is not configured. Returning mock voice options for local demo work.",
+      voices: mockElevenLabsVoices,
+    });
+  }
+
+  const providerResponse = await fetch(buildElevenLabsUrl("/voices"), {
+    method: "GET",
+    headers: {
+      "xi-api-key": env.ELEVENLABS_API_KEY,
+    },
+  });
+
+  if (!providerResponse.ok) {
+    const contentType = providerResponse.headers.get("content-type") ?? "";
+    const detail = contentType.includes("application/json") ? await providerResponse.json() : await providerResponse.text();
+    return json(response, providerResponse.status, {
+      error: "ElevenLabs voice catalog request failed.",
+      status: providerResponse.status,
+      detail,
+    });
+  }
+
+  const payload = await providerResponse.json();
+  return json(response, 200, {
+    source: "elevenlabs",
+    voices: normalizeElevenLabsVoices(payload),
+  });
+};
 
 export const handleElevenLabsPreview = async (request, response, env = process.env) => {
   if (!env.ELEVENLABS_API_KEY) {
@@ -376,6 +452,9 @@ export const createProviderProxyServer = (env = process.env) =>
     }
     if (request.method === "GET" && request.url === "/api/providers/status") {
       return json(response, 200, providerStatus(env));
+    }
+    if (request.method === "GET" && request.url === "/api/voice/elevenlabs/voices") {
+      return handleElevenLabsVoices(request, response, env);
     }
     if (request.method === "POST" && request.url === "/api/voice/elevenlabs/preview") {
       return handleElevenLabsPreview(request, response, env);

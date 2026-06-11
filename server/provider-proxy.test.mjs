@@ -7,6 +7,8 @@ import {
   buildElevenLabsUrl,
   InvalidJsonBodyError,
   loadLocalEnv,
+  mockElevenLabsVoices,
+  normalizeElevenLabsVoices,
   providerStatus,
   readJson,
   validateDubbingRequest,
@@ -107,6 +109,39 @@ describe("provider proxy helpers", () => {
     expect(buildElevenLabsUrl("/speech-to-speech/voice-id", "mp3_44100_128")).toBe(
       "https://api.elevenlabs.io/v1/speech-to-speech/voice-id?output_format=mp3_44100_128",
     );
+  });
+
+  it("normalizes ElevenLabs voice catalog responses", () => {
+    const voices = normalizeElevenLabsVoices({
+      voices: [
+        {
+          voice_id: "voice-123",
+          name: "Radio Voice",
+          category: "professional",
+          description: "A clear radio voice.",
+          preview_url: "https://example.com/preview.mp3",
+          labels: { accent: "Irish" },
+        },
+        { name: "Missing id" },
+      ],
+    });
+
+    expect(voices).toEqual([
+      {
+        voiceId: "voice-123",
+        name: "Radio Voice",
+        category: "professional",
+        description: "A clear radio voice.",
+        previewUrl: "https://example.com/preview.mp3",
+        labels: { accent: "Irish" },
+        source: "elevenlabs",
+      },
+    ]);
+  });
+
+  it("keeps a mock voice catalog available for demos without credentials", () => {
+    expect(mockElevenLabsVoices.length).toBeGreaterThan(0);
+    expect(mockElevenLabsVoices.every((voice) => voice.source === "mock")).toBe(true);
   });
 
   it("loads local .env values without overwriting existing environment values", () => {

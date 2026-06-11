@@ -97,10 +97,13 @@ const stressWordsForText = (text: string) =>
 export const ScriptParserAgent = {
   parse(rawText: string, targetDuration: number): RadioScript {
     const source = rawText.trim() || "ANNOUNCER: Paste or upload a script to begin shaping the spot.";
-    const parsed = source
-      .split(/\n+/)
+    const lines = source.split(/\n+/);
+    const filteredLines = lines.filter((line) => {
+      const t = line.trim();
+      return t.length > 0 && t.toLowerCase() !== "new line";
+    });
+    const parsed = filteredLines
       .map((line) => line.trim())
-      .filter(Boolean)
       .map((raw, index): ScriptLine => {
         const classification = classifyLine(raw);
         const estimatedDuration = classification.type === "pause" ? 1 : estimateLineDuration(classification.text, classification.type === "legal");
