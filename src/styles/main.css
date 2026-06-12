@@ -551,10 +551,38 @@ p {
   gap: 0.82rem;
 }
 
+.script-editor-shell {
+  position: relative;
+}
+
 .script-input {
   min-height: 620px;
   line-height: 1.55;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  padding-bottom: 4.8rem;
+}
+
+.script-lock-fab {
+  position: absolute;
+  right: 0.86rem;
+  bottom: 0.86rem;
+  width: auto;
+  min-width: 9.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-color: rgba(255, 207, 102, 0.55);
+  background: linear-gradient(180deg, #ffd36d, #f5bd44);
+  color: #15110a;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
+  z-index: 2;
+}
+
+.script-lock-fab.locked {
+  border-color: rgba(97, 215, 189, 0.55);
+  background: linear-gradient(180deg, #6ae5c8, #2cb896);
+  color: #061613;
 }
 
 .line-list {

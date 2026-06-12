@@ -1009,7 +1009,13 @@ export function App() {
                 ? "Script is locked. Unlock it before editing, reparsing, uploading, adding, or deleting lines."
                 : "Script is editable. Lock it before recording or client review to prevent accidental changes."}
             </p>
-            <textarea className="script-input" value={scriptDraft} readOnly={project.scriptLocked} onChange={(event) => setScriptDraft(event.target.value)} />
+            <div className="script-editor-shell">
+              <textarea className="script-input" value={scriptDraft} readOnly={project.scriptLocked} onChange={(event) => setScriptDraft(event.target.value)} />
+              <button className={`script-lock-fab ${project.scriptLocked ? "locked" : ""}`} onClick={toggleScriptLock}>
+                {project.scriptLocked ? <Unlock size={18} /> : <Lock size={18} />}
+                {project.scriptLocked ? "Unlock script" : "Lock script"}
+              </button>
+            </div>
           </Panel>
           <Panel title="2. Parse, Timing & Roles" icon={<Radio size={18} />}>
             <Metric label="Estimated runtime" value={`${project.script.estimatedDuration}s`} />
