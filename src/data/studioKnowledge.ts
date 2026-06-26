@@ -1,0 +1,103 @@
+import type { StudioKnowledgeItem } from "../types/models";
+import { importedStudioKnowledgeItems } from "./importedStudioKnowledge";
+
+export const seedStudioKnowledgeItems: StudioKnowledgeItem[] = [
+  {
+    id: "knowledge-script-timing-30",
+    title: "Radio script timing guardrails",
+    topic: "Script timing",
+    productionStage: ["script", "recording"],
+    appliesTo: ["radio", "podcast", "digital"],
+    summary: "A 30 second radio ad usually needs a disciplined word count, deliberate pauses, and space for sonic branding.",
+    guidance: [
+      "Treat timing as performance, not only word count; leave air around the brand, CTA, and legal copy.",
+      "If estimated duration is over target by more than two seconds, tighten before casting or generating voices.",
+      "Legal lines need clarity over speed; do not bury them under music or comedy.",
+    ],
+    keywords: ["timing", "duration", "seconds", "words", "legal", "script", "overcrowded", "pause"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+  {
+    id: "knowledge-voice-casting",
+    title: "Voice casting by job in the script",
+    topic: "Voice casting",
+    productionStage: ["casting", "recording"],
+    appliesTo: ["radio", "dubbing"],
+    summary: "Separate functional voice lanes so announcer, character, legal, VO1/VO2, and mnemonic lines are not forced into one generic voice.",
+    guidance: [
+      "Cast legal, brand mnemonic, and character dialogue separately when they perform different jobs.",
+      "Use accent, pace, age range, and emotional style as searchable criteria for provider voice selection.",
+      "For ElevenLabs, map provider voice IDs to roles only after confirming rights and client fit.",
+    ],
+    keywords: ["voice", "casting", "elevenlabs", "announcer", "voiceover", "vo", "legal", "mnemonic", "accent"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+  {
+    id: "knowledge-sound-design",
+    title: "Sound design restraint for radio clarity",
+    topic: "Sound design",
+    productionStage: ["sound_design", "mix"],
+    appliesTo: ["radio", "sfx"],
+    summary: "Radio sound design should make the idea easier to understand after one listen, not compete with the VO.",
+    guidance: [
+      "Use SFX to mark story beats, product moments, or brand memory; remove effects that only decorate.",
+      "Keep opening hooks short and distinctive so the voice can enter cleanly.",
+      "Build the sonic logo from an ownable sound when possible, then leave a small pocket before or after it.",
+    ],
+    keywords: ["sfx", "sound", "foley", "sonic", "mnemonic", "hook", "clutter", "sound design"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+  {
+    id: "knowledge-mix-voice-led",
+    title: "Voice-led mix baseline",
+    topic: "Mixing",
+    productionStage: ["mix", "master"],
+    appliesTo: ["radio", "podcast", "digital"],
+    summary: "Radio ads need a voice-led balance with music and effects supporting intelligibility before loudness.",
+    guidance: [
+      "Start with the VO intelligible, then bring music and SFX underneath it.",
+      "Lower the bed for legal copy and dense product information.",
+      "Use compression, de-essing, and limiting as finishing controls; they cannot fix unclear copy or poor balance.",
+    ],
+    keywords: ["mix", "voice", "music", "sfx", "level", "loudness", "legal", "compression", "de-essing", "limiter"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+  {
+    id: "knowledge-export-qc",
+    title: "Export and QC gate before dispatch",
+    topic: "Export quality control",
+    productionStage: ["export", "compliance"],
+    appliesTo: ["radio", "digital"],
+    summary: "A spot should not be treated as broadcast-ready until human approval, rights, timing, and delivery format checks pass.",
+    guidance: [
+      "Keep human approval as a hard gate for broadcast export.",
+      "Flag unknown station specs instead of inventing sample rate, loudness, true peak, or naming requirements.",
+      "Export script, cue sheet, QC, craft quality, and production notes with the project JSON for review.",
+    ],
+    keywords: ["export", "qc", "approval", "broadcast", "station", "rights", "delivery", "format"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+  {
+    id: "knowledge-compliance-risk",
+    title: "Compliance risk flags",
+    topic: "Compliance",
+    productionStage: ["script", "compliance", "export"],
+    appliesTo: ["radio", "digital"],
+    summary: "The assistant should flag risk areas and require human/legal review rather than giving legal approval.",
+    guidance: [
+      "Finance, gambling, health, alcohol, children, competitions, and political claims need human review.",
+      "Mandatory phrases and disclaimers should be audible, clear, and not hidden under performance or music.",
+      "Use compliance output as a production risk flag, not legal advice.",
+    ],
+    keywords: ["compliance", "legal", "finance", "gambling", "health", "alcohol", "children", "competition", "disclaimer"],
+    source: "Napkin seed production rules",
+    reliability: "seed",
+  },
+];
+
+export const studioKnowledgeItems: StudioKnowledgeItem[] = [...seedStudioKnowledgeItems, ...importedStudioKnowledgeItems];
