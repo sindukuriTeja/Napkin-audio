@@ -44,7 +44,7 @@ export interface ProviderVoice {
 }
 
 export const providerProxyBaseUrl =
-  import.meta.env.VITE_PROVIDER_PROXY_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8787";
+  import.meta.env.VITE_PROVIDER_PROXY_URL?.replace(/\/$/, "") ?? "";
 
 export const fetchProviderStatus = async (): Promise<ProviderStatus> => {
   const response = await fetch(`${providerProxyBaseUrl}/api/providers/status`);

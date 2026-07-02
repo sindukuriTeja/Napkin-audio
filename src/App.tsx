@@ -858,7 +858,24 @@ export function App() {
       // Switch to Voices tab so user sees the result immediately
       setActiveTab("Voices");
     } catch {
-      setAutoAssignStatus("Script parsed. Voice auto-assign skipped — voice proxy not available. Assign voices manually in the Voices tab.");
+      const fallbackVoices: ProviderVoice[] = [
+        { voiceId: "mock-warm-irish-announcer", name: "Mock Warm Irish Announcer", category: "mock", description: "Warm, clear, radio-friendly announcer.", labels: { accent: "neutral Irish", age: "30-50", style: "warm, direct" }, source: "mock" },
+        { voiceId: "mock-dry-character", name: "Mock Dry Character", category: "mock", description: "Grounded character lane.", labels: { accent: "Dublin", age: "25-45", style: "deadpan, natural" }, source: "mock" },
+        { voiceId: "mock-legal-clear", name: "Mock Legal Clear Read", category: "mock", description: "Measured legal read.", labels: { accent: "neutral Irish", age: "30-60", style: "measured, clear" }, source: "mock" },
+      ];
+      setProviderVoices(fallbackVoices);
+      const pool = fallbackVoices;
+      setProject((current) => {
+        let poolIndex = 0;
+        const updatedRoles = current.voiceRoles.map((role) => {
+          const voice = pool[poolIndex++ % pool.length];
+          return { ...role, provider: "mock" as const, providerVoiceId: voice.voiceId, rightsNotes: `Auto-assigned mock: ${voice.name}.` };
+        });
+        setAutoAssignStatus(`✓ ${updatedRoles.length} role${updatedRoles.length !== 1 ? "s" : ""} assigned mock voices. Connect ElevenLabs for real voices.`);
+        setProviderVoicesMessage(`${fallbackVoices.length} mock voices assigned.`);
+        return recomputeProject({ ...current, voiceRoles: updatedRoles }, "Auto-assigned mock voices (offline fallback)");
+      });
+      setActiveTab("Voices");
     }
   };
 
