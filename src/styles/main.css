@@ -20,31 +20,118 @@
   --line-strong: rgba(255, 255, 255, 0.28);
   --text: #f5f4ef;
   --muted: #93a091;
-  --muted-2: #61695f;
+  --muted-2: #828e7a;
 
   /* Brand Accents */
   --accent: #f5f4ef;        /* Off-white — primary pill fill */
   --accent-hover: #ffffff;
   --accent-2: #b7c2b0;      /* Pale sage — links / secondary emphasis */
+  --on-accent: #0a0a0a;     /* Text/icon color drawn on top of --accent fills */
+  --on-accent-2: #0a0a0a;   /* Text/icon color drawn on top of --accent-2 fills */
   --warn: #d7a94f;          /* Muted amber (score, proposals, QC warn) */
   --blue: #90b3c9;          /* Muted steel blue */
   --violet: #b6a4d6;        /* Muted lavender / Assistant */
   --green: #8fc79b;         /* Sage green / Pass */
   --red: #e08a83;           /* Muted coral / Clip / Fail */
 
-  /* Flat editorial depth: hairlines over shadows */
+  /* Editorial depth: hairlines plus soft, low-contrast elevation so
+     interactive surfaces read clearly at a glance. */
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 24px rgba(0, 0, 0, 0.28);
+  --shadow-card-hover: 0 1px 2px rgba(0, 0, 0, 0.32), 0 16px 32px rgba(0, 0, 0, 0.36);
+  --shadow-raised: 0 1px 1px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
   --glow-cyan: 0 0 0 3px rgba(245, 244, 239, 0.14);
   --glow-gold: 0 0 0 3px rgba(215, 169, 79, 0.18);
   --glow-red: 0 0 0 3px rgba(224, 138, 131, 0.18);
   --glass-glow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --focus-ring: 0 0 0 3px rgba(183, 194, 176, 0.55);
   --border-radius: 6px;
+
+  /* Solid elevated panels (sidebar, topbar, timeline) */
+  --panel-solid: #070707;
+  --timeline-bg: #080808;
+
+  /* Reusable overlay washes, layered on top of --bg/--surface */
+  --overlay-faint: rgba(255, 255, 255, 0.02);
+  --overlay-faint-2: rgba(255, 255, 255, 0.015);
+  --overlay-soft: rgba(255, 255, 255, 0.05);
+  --overlay-medium: rgba(255, 255, 255, 0.07);
+  --overlay-strong: rgba(255, 255, 255, 0.09);
+  --radial-glow: rgba(255, 255, 255, 0.035);
+  --grid-line-1: rgba(255, 255, 255, 0.02);
+  --grid-line-2: rgba(255, 255, 255, 0.015);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+
+  /* Button/slider highlight rings that need to flip with the accent color */
+  --primary-shine: rgba(0, 0, 0, 0.12);
+  --accent-glow: rgba(245, 244, 239, 0.08);
+  --thumb-ring: rgba(245, 244, 239, 0.2);
+  --thumb-ring-hover: rgba(245, 244, 239, 0.3);
+}
+
+/* Light theme — same tokens, editorial paper palette. Toggled via the
+   theme button in the topbar, which sets data-theme on <html>. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  background: #f7f6f2;
+  color: #14140f;
+
+  --bg: #f7f6f2;
+  --panel-solid: #ffffff;
+  --timeline-bg: #efeee7;
+  --surface: rgba(10, 10, 8, 0.035);
+  --surface-2: rgba(10, 10, 8, 0.05);
+  --surface-3: rgba(10, 10, 8, 0.08);
+  --field: rgba(10, 10, 8, 0.035);
+  --line: rgba(10, 10, 8, 0.13);
+  --line-strong: rgba(10, 10, 8, 0.26);
+  --text: #14140f;
+  --muted: #55604f;
+  --muted-2: #54604a;
+
+  --accent: #14140f;
+  --accent-hover: #000000;
+  --accent-2: #5b6b52;
+  --on-accent: #f7f6f2;
+  --on-accent-2: #f7f6f2;
+  --warn: #9c6a12;
+  --blue: #386a89;
+  --violet: #6c569a;
+  --green: #2f8049;
+  --red: #b23b30;
+
+  --shadow: 0 24px 60px rgba(20, 20, 15, 0.12);
+  --shadow-card: 0 1px 2px rgba(20, 20, 15, 0.05), 0 8px 20px rgba(20, 20, 15, 0.07);
+  --shadow-card-hover: 0 1px 2px rgba(20, 20, 15, 0.06), 0 14px 28px rgba(20, 20, 15, 0.1);
+  --shadow-raised: 0 1px 1px rgba(20, 20, 15, 0.06), 0 4px 12px rgba(20, 20, 15, 0.08);
+  --glow-cyan: 0 0 0 3px rgba(20, 20, 15, 0.12);
+  --glow-gold: 0 0 0 3px rgba(156, 106, 18, 0.18);
+  --glow-red: 0 0 0 3px rgba(178, 59, 48, 0.18);
+  --glass-glow: inset 0 1px 0 rgba(20, 20, 15, 0.04);
+  --focus-ring: 0 0 0 3px rgba(91, 107, 82, 0.45);
+
+  --overlay-faint: rgba(10, 10, 8, 0.025);
+  --overlay-faint-2: rgba(10, 10, 8, 0.018);
+  --overlay-soft: rgba(10, 10, 8, 0.05);
+  --overlay-medium: rgba(10, 10, 8, 0.065);
+  --overlay-strong: rgba(10, 10, 8, 0.09);
+  --radial-glow: rgba(10, 10, 8, 0.045);
+  --grid-line-1: rgba(10, 10, 8, 0.035);
+  --grid-line-2: rgba(10, 10, 8, 0.025);
+  --scrollbar-thumb: rgba(10, 10, 8, 0.18);
+  --scrollbar-thumb-hover: rgba(10, 10, 8, 0.32);
+
+  --primary-shine: rgba(255, 255, 255, 0.2);
+  --accent-glow: rgba(20, 20, 15, 0.12);
+  --thumb-ring: rgba(20, 20, 15, 0.16);
+  --thumb-ring-hover: rgba(20, 20, 15, 0.24);
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 /* Custom Scrollbars */
@@ -56,11 +143,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--scrollbar-thumb-hover);
 }
 
 html {
@@ -77,11 +164,12 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  /* Flat black, editorial — no colour blobs */
+  /* Flat, editorial — no colour blobs */
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.035) 0%, transparent 55%),
+    radial-gradient(circle at 50% 0%, var(--radial-glow) 0%, transparent 55%),
     var(--bg);
   background-attachment: fixed;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Graphic overlay: faint line-art grid, napkin.ie style */
@@ -91,8 +179,8 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(var(--grid-line-1) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line-2) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: radial-gradient(circle at 50% 30%, black 30%, transparent 85%);
   z-index: 0;
@@ -174,7 +262,7 @@ button:hover,
 button.active,
 .file-button:hover {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay-medium);
   color: var(--accent-hover);
   box-shadow: none;
 }
@@ -189,12 +277,23 @@ button:disabled {
   box-shadow: none;
 }
 
+/* Keyboard focus — visible on every interactive element, not just inputs */
+button:focus-visible,
+.file-button:focus-within,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Primary Button — solid off-white pill, black label (inverted on hover) */
 button.primary {
   position: relative;
   overflow: hidden;
   background: var(--accent);
-  color: #0a0a0a;
+  color: var(--on-accent);
   border: 1px solid var(--accent);
   font-weight: 700;
   box-shadow: none;
@@ -207,7 +306,7 @@ button.primary::after {
   left: -80%;
   width: 40%;
   height: 200%;
-  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.12), transparent);
+  background: linear-gradient(90deg, transparent, var(--primary-shine), transparent);
   transform: rotate(30deg);
 }
 
@@ -223,8 +322,8 @@ button.primary:hover::after {
 button.primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: #0a0a0a;
-  box-shadow: 0 0 0 4px rgba(245, 244, 239, 0.08);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
 }
 
 /* Danger Button */
@@ -278,6 +377,10 @@ select {
   padding-right: 2.2rem;
 }
 
+:root[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2355604f' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+}
+
 label {
   display: grid;
   gap: 0.5rem;
@@ -298,19 +401,34 @@ label {
   max-width: 100vw;
 }
 
-/* Left Sidebar Navigation */
+/* Left Sidebar Navigation — pinned to the viewport. Height (not
+   min-height) plus overflow on the nav list keeps the Preview transport
+   at the bottom always in view, even when there are more nav items than
+   fit on a shorter screen; only the nav list scrolls internally. */
 .sidebar {
   position: sticky;
   top: 0;
   flex: 0 0 240px;
   width: 240px;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+  background: var(--panel-solid);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.25rem 1rem;
-  background: #070707;
-  border-right: 1px solid var(--line);
+  padding-right: 0.15rem;
+  margin-right: -0.15rem;
 }
 
 .sidebar-brand {
@@ -378,13 +496,13 @@ label {
 }
 
 .sidebar-section button:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--overlay-soft);
   color: var(--text);
 }
 
 .sidebar-section button.active {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--overlay-strong);
   box-shadow: none;
 }
 
@@ -398,6 +516,7 @@ label {
   border: 1px solid var(--line);
   border-radius: var(--border-radius);
   background: var(--surface-2);
+  box-shadow: var(--shadow-card);
 }
 
 .preview-clock {
@@ -457,6 +576,9 @@ label {
 .main-col {
   flex: 1;
   min-width: 0;
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
   padding: 1.25rem 1.5rem 3rem;
 }
 
@@ -467,10 +589,10 @@ label {
   align-items: center;
   gap: 1.5rem;
   border: 1px solid var(--line);
-  background: #070707;
+  background: var(--panel-solid);
   border-radius: var(--border-radius);
   padding: 1rem 1.25rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-raised);
 }
 
 .topbar-title {
@@ -507,7 +629,15 @@ label {
 
 .icon-button:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--overlay-medium);
+}
+
+/* Light/dark theme toggle button */
+.theme-toggle {
+  padding: 0.4rem;
+  border-radius: 999px;
+  width: 2.1rem;
+  height: 2.1rem;
 }
 
 .save-indicator {
@@ -550,7 +680,7 @@ label {
 
 .segmented button.active {
   background: var(--accent);
-  color: #0a0a0a;
+  color: var(--on-accent);
   box-shadow: none;
 }
 
@@ -587,7 +717,7 @@ label {
   border-radius: var(--border-radius);
   background: var(--surface);
   padding: 1.1rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
 }
 
 .ai-director-header {
@@ -633,6 +763,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  box-shadow: var(--shadow-card);
 }
 
 .suggestion-card strong {
@@ -704,7 +835,14 @@ label {
   background: var(--surface);
   border-radius: var(--border-radius);
   padding: 1rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+
+.metric-tile:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
 }
 
 .metric-tile-label {
@@ -792,7 +930,14 @@ label {
   background: var(--surface);
   border-radius: var(--border-radius);
   padding: 1rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+
+.quick-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
 }
 
 .quick-card-icon {
@@ -829,14 +974,14 @@ label {
   grid-template-columns: minmax(0, 1.05fr) minmax(390px, 0.95fr);
 }
 
-/* Panels (Flat hairline card containers) */
+/* Panels (hairline card containers with soft elevation) */
 .panel,
 .metric {
   border: 1px solid var(--line);
   background: var(--surface);
   border-radius: var(--border-radius);
   padding: 1.25rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
 }
 
 .panel {
@@ -907,6 +1052,7 @@ label {
   background: var(--field);
   border-radius: 6px;
   border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
 }
 
 .script-input {
@@ -970,8 +1116,8 @@ label {
 }
 
 .script-line.current {
-  border-color: rgba(245, 244, 239, 0.4);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  background: var(--overlay-medium);
   box-shadow: none;
 }
 
@@ -1001,7 +1147,7 @@ label {
   min-height: 80px;
   line-height: 1.5;
   margin: 0.5rem 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--overlay-faint);
   font-family: inherit;
 }
 
@@ -1009,7 +1155,7 @@ label {
   min-height: 60px;
   margin-top: 0.5rem;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--overlay-faint-2);
   font-size: 0.85rem;
 }
 
@@ -1068,14 +1214,14 @@ label {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 1rem;
-  box-shadow: none;
-  transition: border-color 0.25s ease, transform 0.25s ease;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .voice-card:hover,
 .memory-card:hover {
   border-color: rgba(245, 244, 239, 0.3);
-  box-shadow: none;
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-3px);
 }
 
@@ -1105,7 +1251,7 @@ label {
 .voice-card span {
   display: inline-block;
   width: fit-content;
-  color: #0a0a0a;
+  color: var(--on-accent-2);
   background: var(--accent-2);
   border-radius: 999px;
   padding: 0.25rem 0.65rem;
@@ -1122,11 +1268,11 @@ label {
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0, rgba(255, 255, 255, 0.02) 8.33%, transparent 8.33%, transparent 16.66%),
-    #080808;
+    repeating-linear-gradient(90deg, var(--grid-line-1) 0, var(--grid-line-1) 8.33%, transparent 8.33%, transparent 16.66%),
+    var(--timeline-bg);
   overflow: hidden;
   margin-bottom: 0.75rem;
-  box-shadow: none;
+  box-shadow: var(--shadow-card);
 }
 
 .timeline::after {
@@ -1136,7 +1282,7 @@ label {
   bottom: 0;
   left: 0;
   right: 0;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.015) 50%, transparent 50%);
+  background-image: linear-gradient(180deg, var(--grid-line-2) 50%, transparent 50%);
   background-size: 100% 36px;
   pointer-events: none;
 }
@@ -1161,7 +1307,7 @@ label {
   border: 1px solid rgba(0, 0, 0, 0.25);
   transition: all 0.2s ease;
   background: var(--accent);
-  color: #0a0a0a;
+  color: var(--on-accent);
 }
 
 .timeline-block::after {
@@ -1245,14 +1391,14 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--accent);
   border: 1px solid rgba(0, 0, 0, 0.3);
   cursor: pointer;
-  box-shadow: 0 0 0 2px rgba(245, 244, 239, 0.2);
+  box-shadow: 0 0 0 2px var(--thumb-ring);
   margin-top: -9px;
   transition: all 0.1s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--accent-hover);
-  box-shadow: 0 0 0 3px rgba(245, 244, 239, 0.3);
+  box-shadow: 0 0 0 3px var(--thumb-ring-hover);
 }
 
 /* Slider values grid labels */
@@ -1384,9 +1530,19 @@ audio {
 }
 
 /* Responsive Overrides */
+/* Below 1280px there isn't room for a third sticky column, so the AI
+   Director reflows to a full-width panel under the main content instead
+   of disappearing — it stays reachable on laptop-sized screens. */
 @media (max-width: 1280px) {
+  .workspace {
+    flex-wrap: wrap;
+  }
+
   .ai-director-panel {
-    display: none;
+    position: static;
+    flex: 1 1 100%;
+    width: 100%;
+    order: 3;
   }
 }
 
@@ -1422,10 +1578,18 @@ audio {
   .sidebar {
     position: static;
     width: 100%;
-    min-height: 0;
+    height: auto;
+    overflow: visible;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: visible;
+    min-height: auto;
   }
 
   .sidebar-section {
@@ -1445,9 +1609,7 @@ audio {
 
 @media (max-width: 680px) {
   .topbar {
-    padding: 1rem;
-    flex-wrap: wrap;
-  }
+    padding: 1rem;  }
 
   .topbar-title h1 {
     font-size: 1.15rem;

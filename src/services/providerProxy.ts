@@ -210,10 +210,16 @@ export const generateElevenLabsFullSpot = async (lines: FullSpotLine[]): Promise
   return response.blob();
 };
 
+// ElevenLabs currently ships a single Sound Effects model. Kept as a union (rather than a
+// plain string) so a future "eleven_text_to_sound_v3" can be added here and it will show up
+// as a real, working option in the Sound Design model picker in App.tsx.
+export type ElevenLabsSoundEffectModel = "eleven_text_to_sound_v2";
+
 export interface ElevenLabsSoundEffectRequest {
   text: string;
   durationSeconds?: number;
   promptInfluence?: number;
+  modelId?: ElevenLabsSoundEffectModel;
 }
 
 export const generateElevenLabsSoundEffect = async (input: ElevenLabsSoundEffectRequest): Promise<Blob> => {
@@ -224,6 +230,7 @@ export const generateElevenLabsSoundEffect = async (input: ElevenLabsSoundEffect
       text: input.text,
       durationSeconds: input.durationSeconds,
       promptInfluence: input.promptInfluence,
+      modelId: input.modelId ?? "eleven_text_to_sound_v2",
     }),
   });
   if (!response.ok) {
@@ -232,9 +239,15 @@ export const generateElevenLabsSoundEffect = async (input: ElevenLabsSoundEffect
   return response.blob();
 };
 
+// music_v1 is the long-standing default; music_v2 is ElevenLabs' newer flagship model with
+// better prompt adherence, section-by-section composition, mid-track transitions, and
+// embedded sound effects.
+export type ElevenLabsMusicModel = "music_v1" | "music_v2";
+
 export interface ElevenLabsMusicRequest {
   prompt: string;
   musicLengthMs?: number;
+  modelId?: ElevenLabsMusicModel;
 }
 
 export const generateElevenLabsMusic = async (input: ElevenLabsMusicRequest): Promise<Blob> => {
@@ -244,6 +257,7 @@ export const generateElevenLabsMusic = async (input: ElevenLabsMusicRequest): Pr
     body: JSON.stringify({
       prompt: input.prompt,
       musicLengthMs: input.musicLengthMs,
+      modelId: input.modelId ?? "music_v1",
     }),
   });
   if (!response.ok) {

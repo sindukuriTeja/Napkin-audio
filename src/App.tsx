@@ -1,3 +1,4 @@
+import { Mp3Encoder } from "@breezystack/lamejs";
 import {
   CheckCircle2,
   ClipboardList,
@@ -7,6 +8,7 @@ import {
   Lock,
   Mic,
   Gauge,
+  Moon,
   Music2,
   PackageCheck,
   Pause,
@@ -18,6 +20,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Square,
+  Sun,
   Unlock,
   Upload,
   Wand2,
@@ -58,6 +61,8 @@ import {
   type FullSpotLine,
   type ProviderStatus,
   type ProviderVoice,
+  type ElevenLabsSoundEffectModel,
+  type ElevenLabsMusicModel,
 } from "./services/providerProxy";
 import { generateMockVoicePreviewBlob, MockVoiceProvider } from "./services/voiceProviders";
 import type { Brief, Project, ScriptLineType, VoiceRole, VoiceTake, SoundCue, MusicCue } from "./types/models";
@@ -157,6 +162,16 @@ const formatTimecode = (seconds: number) => {
 
 const storageKey = "napkin-audio-ai-studio-current-project";
 const legacyStorageKeys = ["napkin-ai-audio-studio-current-project", "ra-studio-current-project"];
+
+type ThemeMode = "dark" | "light";
+const themeStorageKey = "napkin-audio-ai-studio-theme";
+
+const loadInitialTheme = (): ThemeMode => {
+  if (typeof window === "undefined") return "dark";
+  const saved = window.localStorage.getItem(themeStorageKey);
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+};
 
 const isProjectLike = (value: unknown): value is Project =>
   Boolean(
@@ -262,6 +277,41 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   return new Blob([view], { type: 'audio/wav' });
 }
 
+function floatChannelToInt16(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]));
+    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return output;
+}
+
+function audioBufferToMp3(buffer: AudioBuffer, kbps = 192): Blob {
+  const numOfChan = buffer.numberOfChannels >= 2 ? 2 : 1;
+  const sampleRate = buffer.sampleRate;
+  const encoder = new Mp3Encoder(numOfChan, sampleRate, kbps);
+
+  const left = floatChannelToInt16(buffer.getChannelData(0));
+  const right = numOfChan === 2 ? floatChannelToInt16(buffer.getChannelData(1)) : undefined;
+
+  const chunks: Uint8Array[] = [];
+  const sampleBlockSize = 1152; // MP3 frame size lamejs expects per encode call
+  for (let i = 0; i < left.length; i += sampleBlockSize) {
+    const leftChunk = left.subarray(i, i + sampleBlockSize);
+    const rightChunk = right ? right.subarray(i, i + sampleBlockSize) : undefined;
+    const encoded = encoder.encodeBuffer(leftChunk, rightChunk);
+    if (encoded.length > 0) chunks.push(encoded);
+  }
+  const finalChunk = encoder.flush();
+  if (finalChunk.length > 0) chunks.push(finalChunk);
+
+  // lamejs' Uint8Array chunks are typed against ArrayBufferLike, which newer DOM lib
+  // typings no longer accept directly as BlobPart; copy into plain ArrayBuffer-backed
+  // views so Blob's constructor type-checks cleanly.
+  const blobParts = chunks.map((chunk) => new Uint8Array(chunk));
+  return new Blob(blobParts, { type: "audio/mp3" });
+}
+
 function interleave(inputL: Float32Array, inputR: Float32Array): Float32Array {
   const length = inputL.length + inputR.length;
   const result = new Float32Array(length);
@@ -294,10 +344,15 @@ let activeSourceNode: AudioBufferSourceNode | null = null;
 
 export function App() {
   const [project, setProject] = useState<Project>(() => loadInitialProject());
+  const [theme, setTheme] = useState<ThemeMode>(() => loadInitialTheme());
   const [activeTab, setActiveTab] = useState<Tab>("Studio");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [mode, setMode] = useState<"creative" | "producer">("creative");
   const [ttsModel, setTtsModel] = useState<"eleven_multilingual_v2" | "eleven_v3">("eleven_multilingual_v2");
+  // ElevenLabs ships one Sound Effects model today (eleven_text_to_sound_v2). Kept as state,
+  // rather than a hardcoded literal, so a future v3 release only needs a new segmented option below.
+  const [sfxModel, setSfxModel] = useState<ElevenLabsSoundEffectModel>("eleven_text_to_sound_v2");
+  const [musicModel, setMusicModel] = useState<ElevenLabsMusicModel>("music_v1");
   const [scriptDraft, setScriptDraft] = useState(project.script.rawText);
   const [llmInput, setLlmInput] = useState("");
   const [llmPlanMessage, setLlmPlanMessage] = useState("Describe the ad, product, audience, offer, tone, and duration. Llama 3 will create the script, voice plan, and sound plan.");
@@ -373,6 +428,17 @@ export function App() {
       // Local persistence is a convenience only; export JSON remains the durable backup.
     }
   }, [project]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      window.localStorage.setItem(themeStorageKey, theme);
+    } catch {
+      // Theme persistence is a convenience only; it just falls back to the OS preference next load.
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((current) => (current === "dark" ? "light" : "dark"));
 
   const scriptTextFromLlmPlan = (plan: LlmProductionPlan) =>
     plan.scriptLines
@@ -1085,7 +1151,7 @@ export function App() {
 
   const downloadMixedAudio = () => {
     if (!mixedAudioUrl) return;
-    const filename = `${project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "spot"}-full-mix.wav`;
+    const filename = `${project.brief.brand.replace(/\W+/g, "-").toLowerCase() || "spot"}-full-mix.mp3`;
     const a = document.createElement("a");
     a.href = mixedAudioUrl;
     a.download = filename;
@@ -1296,9 +1362,9 @@ export function App() {
       setMixRenderingMessage("Rendering final stereo mix...");
       const renderedBuffer = await offlineCtx.startRendering();
 
-      setMixRenderingMessage("Encoding WAV package...");
-      const wavBlob = audioBufferToWav(renderedBuffer);
-      const url = URL.createObjectURL(wavBlob);
+      setMixRenderingMessage("Encoding MP3 package...");
+      const mp3Blob = audioBufferToMp3(renderedBuffer);
+      const url = URL.createObjectURL(mp3Blob);
       setMixedAudioUrl(url);
       setMixRenderingMessage(`✓ Mixed audio generated! (${duration} seconds)`);
     } catch (error) {
@@ -1437,6 +1503,7 @@ export function App() {
           text: cue.sfxMoment || cue.label,
           durationSeconds: duration,
           promptInfluence: 0.3,
+          modelId: sfxModel,
         });
         cue.audioUrl = URL.createObjectURL(blob);
       } catch (error) {
@@ -1457,6 +1524,7 @@ export function App() {
         const blob = await generateElevenLabsMusic({
           prompt,
           musicLengthMs: lengthMs,
+          modelId: musicModel,
         });
         cue.audioUrl = URL.createObjectURL(blob);
       } catch (error) {
@@ -1649,6 +1717,7 @@ export function App() {
         text: cue.sfxMoment || cue.label,
         durationSeconds: duration,
         promptInfluence: 0.3,
+        modelId: sfxModel,
       });
       const audioUrl = URL.createObjectURL(blob);
       updateSoundCue(cueId, { audioUrl });
@@ -1677,6 +1746,7 @@ export function App() {
       const blob = await generateElevenLabsMusic({
         prompt,
         musicLengthMs: lengthMs,
+        modelId: musicModel,
       });
       const audioUrl = URL.createObjectURL(blob);
       updateMusicCue(cueId, { audioUrl });
@@ -1848,16 +1918,18 @@ export function App() {
           </div>
         </div>
 
-        {sidebarSections.map((section) => (
-          <div className="sidebar-section" key={section.heading}>
-            <p className="sidebar-heading">{section.heading}</p>
-            {section.items.map((tab) => (
-              <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-                {tabIcons[tab]} {tab}
-              </button>
-            ))}
-          </div>
-        ))}
+        <nav className="sidebar-nav">
+          {sidebarSections.map((section) => (
+            <div className="sidebar-section" key={section.heading}>
+              <p className="sidebar-heading">{section.heading}</p>
+              {section.items.map((tab) => (
+                <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
+                  {tabIcons[tab]} {tab}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
 
         <div className="sidebar-preview">
           <p className="sidebar-heading">Preview</p>
@@ -1920,6 +1992,15 @@ export function App() {
             <span className="save-indicator">
               <CheckCircle2 size={14} /> Saved
             </span>
+            <button
+              type="button"
+              className="icon-button theme-toggle"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
             <div className="segmented" aria-label="Mode">
               <button className={mode === "creative" ? "active" : ""} onClick={() => setMode("creative")}>
                 Creative
@@ -2526,7 +2607,7 @@ export function App() {
               {mixedAudioUrl && (
                 <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <audio controls src={mixedAudioUrl} style={{ width: "100%" }} />
-                  <button onClick={downloadMixedAudio}>Download Full Mix (.WAV)</button>
+                  <button onClick={downloadMixedAudio}>Download Full Mix (.MP3)</button>
                 </div>
               )}
             </div>
@@ -2546,6 +2627,36 @@ export function App() {
               <button onClick={() => setCommandDraft("Add a distinctive opening sound hook")}>SFX hook</button>
               <button onClick={() => setCommandDraft("Make the music more cinematic but keep the voice clear")}>Music bed</button>
               <button onClick={() => setCommandDraft("Create a clean final brand sting")}>Brand sting</button>
+            </div>
+
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--line, #262626)", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              <label>
+                ElevenLabs sound effects model
+                <div className="segmented" aria-label="ElevenLabs sound effects model" style={{ width: "fit-content" }}>
+                  <button type="button" className={sfxModel === "eleven_text_to_sound_v2" ? "active" : ""} onClick={() => setSfxModel("eleven_text_to_sound_v2")}>
+                    v2 · Sound Effects
+                  </button>
+                </div>
+              </label>
+              <small>
+                ElevenLabs currently ships one Sound Effects model (v2). There is no v3 for sound effects yet — v3 is a separate, speech-only model used in the Voices tab. When ElevenLabs releases a newer sound-effects model, it will appear here as a real, working option.
+              </small>
+              <label>
+                ElevenLabs music model
+                <div className="segmented" aria-label="ElevenLabs music model" style={{ width: "fit-content" }}>
+                  <button type="button" className={musicModel === "music_v1" ? "active" : ""} onClick={() => setMusicModel("music_v1")}>
+                    v1 · Stable
+                  </button>
+                  <button type="button" className={musicModel === "music_v2" ? "active" : ""} onClick={() => setMusicModel("music_v2")}>
+                    v2 · Studio-grade
+                  </button>
+                </div>
+              </label>
+              <small>
+                {musicModel === "music_v2"
+                  ? "v2 is ElevenLabs' newer flagship music model — better prompt adherence, section-by-section composition, mid-track genre transitions, and sound effects embedded directly in the track."
+                  : "v1 is the original, stable music model this project has used so far. Switch to v2 for richer composition on new tracks."}
+              </small>
             </div>
 
             <div style={{ marginTop: "1.5rem", borderBottom: "1px solid var(--line, #262626)", paddingBottom: "1rem" }}>
@@ -2785,7 +2896,7 @@ export function App() {
               {mixedAudioUrl && (
                 <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <audio controls src={mixedAudioUrl} style={{ width: "100%" }} />
-                  <button onClick={downloadMixedAudio}>Download Full Mix (.WAV)</button>
+                  <button onClick={downloadMixedAudio}>Download Full Mix (.MP3)</button>
                 </div>
               )}
             </div>
@@ -2806,7 +2917,7 @@ export function App() {
             <div className="readiness-list">
               <Metric label="Loudness target" value={project.mixSettings.loudnessTarget} />
               <Metric label="True peak target" value={project.mixSettings.truePeakTarget} />
-              <Metric label="Audio RAG hits" value={String(audioQualityHits.length)} />
+              <Metric label="Studio knowledge matches" value={String(audioQualityHits.length)} />
             </div>
             <div className="slider-grid">
               {[
@@ -2842,7 +2953,7 @@ export function App() {
             <div className="rag-guidance">
               <div className="section-header compact">
                 <div>
-                  <h2>Audio Quality RAG</h2>
+                  <h2>Studio knowledge: mix &amp; mastering</h2>
                   <p>Mix, mastering, loudness, music, and SFX guidance retrieved from the imported audio knowledge pack.</p>
                 </div>
               </div>
@@ -2857,7 +2968,7 @@ export function App() {
           </section>
 
           <section className="panel" style={{ marginTop: "1rem" }}>
-            <SectionHeader title="Full Mix Preview" detail="Combine voice takes, SFX, and music bed into a single mixed WAV preview." />
+            <SectionHeader title="Full Mix Preview" detail="Combine voice takes, SFX, and music bed into a single mixed MP3 preview." />
             <p className="large-note">
               Render and preview a complete multi-track mix combining your generated voice takes, sound effects (SFX), and music bed using your current mix engineer balance levels.
             </p>
@@ -2883,7 +2994,7 @@ export function App() {
               {mixedAudioUrl && (
                 <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <audio controls src={mixedAudioUrl} style={{ width: "100%" }} />
-                  <button onClick={downloadMixedAudio}>Download Full Mix (.WAV)</button>
+                  <button onClick={downloadMixedAudio}>Download Full Mix (.MP3)</button>
                 </div>
               )}
             </div>
