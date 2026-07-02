@@ -1,27 +1,37 @@
 // Vercel serverless entry point for the provider proxy.
 //
-// This lets the whole app — frontend + backend — deploy as a single Vercel
-// project: Vercel builds the Vite app as static output and turns every file
-// under /api into its own serverless function. Because this file uses a
-// catch-all route ("[...path]"), any request to /api/* (e.g.
-// /api/voice/elevenlabs/voices, /api/providers/status) lands here with the
-// full path on `request.url`, which is exactly what routeProviderProxyRequest
-// already expects — so no route-handling logic is duplicated between this
-// deployment shape and the plain-Node server used for local dev / Render.
-//
-// Configure the same environment variables here as you would for the
-// standalone server (ELEVENLABS_API_KEY, ELEVENLABS_DEFAULT_VOICE_ID, etc.)
-// in the Vercel project's Settings -> Environment Variables. Do NOT prefix
-// them with VITE_ — that would bake them into the public frontend bundle.
+// Vercel serverless functions receive a different request/response shape than
+// Node's raw http.createServer — the body is pre-buffered, request.url only
+// contains the path portion, and headers are already lowercased. This adapter
+// bridges that gap so routeProviderProxyRequest works unchanged.
+
 import { routeProviderProxyRequest } from "../server/provider-proxy.mjs";
 
-// Give ElevenLabs full-spot rendering (several sequential API calls) room to
-// finish. Vercel Hobby projects may cap this lower than 60s regardless —
-// check your plan's function duration limit if long renders start timing out.
 export const config = {
   maxDuration: 60,
 };
 
 export default async function handler(request, response) {
-  return routeProviderProxyRequest(request, response, process.env);
+  // Vercel already parses JSON bodies, but routeProviderProxyRequest's readJson
+  // expects an async-iterable stream. We create a minimal adapter that yields
+  // the raw body buffer so the existing code works without changes.
+  const adaptedRequest = Object.create(request, {
+    // Ensure the URL is the full path (Vercel sometimes strips the origin)
+    url: { value: request.url, writable: true, configurable: true },
+  });
+
+  // If Vercel has already parsed/buffered the body, make it iterable again
+  // so readJson() can consume it via `for await (const chunk of request)`.
+  if (request.body !== undefined && request.body !== null) {
+    const bodyStr = typeof request.body === "string"
+      ? request.body
+      : JSON.stringify(request.body);
+    const bodyBuffer = Buffer.from(bodyStr, "utf8");
+
+    adaptedRequest[Symbol.asyncIterator] = async function* () {
+      yield bodyBuffer;
+    };
+  }
+
+  return routeProviderProxyRequest(adaptedRequest, response, process.env);
 }

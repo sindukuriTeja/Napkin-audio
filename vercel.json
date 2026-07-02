@@ -1,15 +1,19 @@
 {
+  "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
   "rewrites": [
-    { "source": "/api/providers/status", "destination": "/api/providers/status" },
-    { "source": "/api/voice/elevenlabs/voices", "destination": "/api/voice/elevenlabs/voices" },
-    { "source": "/api/voice/elevenlabs/preview", "destination": "/api/voice/elevenlabs/preview" },
-    { "source": "/api/voice/elevenlabs/full-spot", "destination": "/api/voice/elevenlabs/full-spot" },
-    { "source": "/api/sound/elevenlabs/effect", "destination": "/api/sound/elevenlabs/effect" },
-    { "source": "/api/music/elevenlabs/compose", "destination": "/api/music/elevenlabs/compose" },
-    { "source": "/api/llm/production-plan", "destination": "/api/llm/production-plan" },
-    { "source": "/health", "destination": "/api/health" }
+    { "source": "/api/(.*)", "destination": "/api/[...path]" },
+    { "source": "/health", "destination": "/api/[...path]" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    }
   ]
 }
