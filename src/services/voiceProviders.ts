@@ -12,15 +12,17 @@ const writeAscii = (view: DataView, offset: number, value: string) => {
 const textHash = (value: string) =>
   value.split("").reduce((hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0, 2166136261);
 
-export const generateMockVoicePreviewBlob = (text: string) => {
+export const generateMockVoicePreviewBlob = (text: string, overrideDuration?: number) => {
   const sampleRate = 8000;
-  const durationSeconds = clamp(0.9 + text.trim().split(/\s+/).filter(Boolean).length * 0.035, 1, 3.2);
+  const calculated = 0.9 + text.trim().split(/\s+/).filter(Boolean).length * 0.035;
+  const maxCap = overrideDuration ? Math.max(overrideDuration, 1) : 3.2;
+  const durationSeconds = clamp(overrideDuration ?? calculated, 1, maxCap);
   const sampleCount = Math.floor(sampleRate * durationSeconds);
   const bytesPerSample = 2;
   const buffer = new ArrayBuffer(44 + sampleCount * bytesPerSample);
   const view = new DataView(buffer);
-  const primaryFrequency = 360 + (textHash(text) % 180);
-  const secondaryFrequency = primaryFrequency * 1.5;
+  
+  const basePitch = 130 + (textHash(text) % 90);
 
   writeAscii(view, 0, "RIFF");
   view.setUint32(4, 36 + sampleCount * bytesPerSample, true);
@@ -38,14 +40,36 @@ export const generateMockVoicePreviewBlob = (text: string) => {
 
   for (let index = 0; index < sampleCount; index += 1) {
     const time = index / sampleRate;
-    const envelope = Math.min(1, time * 12) * Math.min(1, (durationSeconds - time) * 8);
-    const markerPulse = Math.sin(2 * Math.PI * secondaryFrequency * time) * 0.12;
-    const tone = Math.sin(2 * Math.PI * primaryFrequency * time) * 0.26 + markerPulse;
-    view.setInt16(44 + index * bytesPerSample, Math.round(clamp(tone * envelope, -1, 1) * 32767), true);
+    const cadence = 0.5 + 0.5 * Math.sin(2 * Math.PI * 4 * time);
+    const envelope = Math.min(1, time * 8) * Math.min(1, (durationSeconds - time) * 6) * cadence;
+    
+    const f0 = basePitch + Math.sin(2 * Math.PI * 1.5 * time) * 15;
+    const h1 = Math.sin(2 * Math.PI * f0 * time) * 0.4;
+    const h2 = Math.sin(2 * Math.PI * (f0 * 2) * time) * 0.2;
+    const h3 = Math.sin(2 * Math.PI * (f0 * 3) * time) * 0.1;
+    const voiceTone = (h1 + h2 + h3) * 0.6;
+
+    view.setInt16(44 + index * bytesPerSample, Math.round(clamp(voiceTone * envelope, -1, 1) * 32767), true);
   }
 
   return new Blob([buffer], { type: "audio/wav" });
 };
+
+export const fetchSpokenTtsAudioBlob = async (text: string, langCode: string = "en"): Promise<Blob> => {
+  try {
+    const cleanLang = langCode.split("-")[0];
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text.slice(0, 200))}&tl=${cleanLang}&client=tw-ob`;
+    const response = await fetch(url);
+    if (response.ok) {
+      const blob = await response.blob();
+      if (blob.size > 100) return blob;
+    }
+  } catch (err) {
+    console.warn("TTS fetch notice:", err);
+  }
+  return generateMockVoicePreviewBlob(text);
+};
+
 
 export interface VoiceProvider {
   id: VoiceProviderConfig["provider"];

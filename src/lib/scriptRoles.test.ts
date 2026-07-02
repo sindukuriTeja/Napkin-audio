@@ -27,7 +27,8 @@ describe("script role assignment", () => {
       assignedVoiceRoleId: customRole.id,
     };
     const legalLine = {
-      ...project.script.lines.find((line) => line.type === "legal")!,
+      ...project.script.lines[0],
+      type: "legal" as const,
       assignedVoiceRoleId: customRole.id,
     };
     const repaired = assignVoiceRolesToScript(

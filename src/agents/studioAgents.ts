@@ -378,19 +378,107 @@ export const StudioKnowledgeAgent = {
 
 export const SoundDesignAgent = {
   buildCues(project: Project): { soundCues: SoundCue[]; musicCues: MusicCue[]; recommendations: AgentRecommendation[] } {
-    const sfxLines = project.script.lines.filter((line) => line.type === "sound-effect" || line.text.toLowerCase().includes("sound"));
-    const soundCues = sfxLines.map((line) => ({
-      id: createId("sfx"),
-      lineId: line.id,
-      label: line.text.slice(0, 48),
-      location: "Scripted moment",
-      texture: "Natural, not cluttered",
-      sfxMoment: line.text,
-      foley: "Confirm in production",
-      startTime: line.startTime,
-      endTime: Math.max(line.endTime, line.startTime + 1),
-      notes: "Check that this supports the voice rather than fighting it.",
-    }));
+    const soundCues: SoundCue[] = [];
+    const addedLineIds = new Set<string>();
+
+    for (const line of project.script.lines) {
+      // 1. Explicit sound effect lines
+      if (line.type === "sound-effect") {
+        soundCues.push({
+          id: createId("sfx"),
+          lineId: line.id,
+          label: line.text.replace(/^(sfx|sfx:)\s*/i, "").slice(0, 48) || "Sound Effect",
+          location: "Scripted moment",
+          texture: "Natural, not cluttered",
+          sfxMoment: line.text.replace(/^(sfx|sfx:)\s*/i, ""),
+          foley: "Confirm in production",
+          startTime: line.startTime,
+          endTime: Math.max(line.endTime, line.startTime + 2.0),
+          notes: "Auto-detected sound effect line.",
+        });
+        addedLineIds.add(line.id);
+        continue;
+      }
+
+      // 2. Bracketed/Parenthetical matches: (Door slams) or [Wind blows]
+      const bracketMatches = [...line.text.matchAll(/[\[\((]([^\]\)]+)[\]\))]/g)];
+      let foundBracket = false;
+      if (bracketMatches.length > 0) {
+        for (const match of bracketMatches) {
+          const innerText = match[1].trim();
+          if (innerText && !/^(vo|vo\d+|announcer|anncr|music)$/i.test(innerText)) {
+            soundCues.push({
+              id: createId("sfx"),
+              lineId: line.id,
+              label: innerText.slice(0, 48),
+              location: `Parenthetical in line ${line.lineNumber}`,
+              texture: "Restrained, supportive",
+              sfxMoment: innerText,
+              foley: "Confirm in production",
+              startTime: line.startTime,
+              endTime: Math.max(line.endTime, line.startTime + 1.5),
+              notes: "Auto-detected parenthetical sound cue.",
+            });
+            foundBracket = true;
+          }
+        }
+      }
+      if (foundBracket) {
+        addedLineIds.add(line.id);
+      }
+
+      // 3. Keyword matching system (if not already added)
+      if (!addedLineIds.has(line.id)) {
+        const text = line.text.toLowerCase();
+        let matched = false;
+        let label = "";
+        let prompt = "";
+        let texture = "Subtle, supportive";
+
+        if (/wind|rain|storm|thunder|birds|sea|ocean|waves|ambient|background/i.test(text)) {
+          label = "Nature/Weather Ambience";
+          prompt = "Soft wind blowing, gentle rain, ocean waves, or distant birds";
+          matched = true;
+        } else if (/door|knock|creak|bell|ring|slam/i.test(text)) {
+          label = "Door Interaction SFX";
+          prompt = "A realistic door knock, creak, slam, or doorbell chime";
+          matched = true;
+        } else if (/car|engine|drive|horn|honk|screech|traffic|vehicle/i.test(text)) {
+          label = "Car/Vehicle Sound Effect";
+          prompt = "A quiet car engine hum, horn beep, or traffic background";
+          matched = true;
+        } else if (/phone|ring|buzz|vibrate|beep|notification|click|mouse|keyboard/i.test(text)) {
+          label = "Device Alert/Click";
+          prompt = "A subtle phone ringtone, notification chime, or keyboard typing click";
+          matched = true;
+        } else if (/laugh|gasp|sigh|breath|cough|cry/i.test(text)) {
+          label = "Human Foley / Reaction";
+          prompt = "Subtle human laughter, sigh, cough, or gasp";
+          matched = true;
+        } else if (/clock|tick|ticking/i.test(text)) {
+          label = "Clock Ticking";
+          prompt = "A clean, rhythmic clock ticking sound";
+          matched = true;
+        }
+
+        if (matched) {
+          soundCues.push({
+            id: createId("sfx"),
+            lineId: line.id,
+            label,
+            location: `Keyword match in line ${line.lineNumber}`,
+            texture,
+            sfxMoment: prompt,
+            foley: "Confirm in production",
+            startTime: line.startTime,
+            endTime: Math.max(line.endTime, line.startTime + 1.5),
+            notes: `Auto-detected based on keyword in line ${line.lineNumber}.`,
+          });
+          addedLineIds.add(line.id);
+        }
+      }
+    }
+
     const musicCues: MusicCue[] = [
       {
         id: "music-bed-1",
@@ -410,7 +498,7 @@ export const SoundDesignAgent = {
         agentName: "SoundDesignAgent",
         severity: soundCues.length > 4 ? "warn" : "info",
         confidence: 0.78,
-        affectedLineIds: sfxLines.map((line) => line.id),
+        affectedLineIds: Array.from(addedLineIds),
         title: soundCues.length ? "Sound world has scripted cues" : "Add a stronger sonic hook",
         detail: soundCues.length
           ? "Use the cues selectively so the idea stays clear."

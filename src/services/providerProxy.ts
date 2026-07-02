@@ -17,6 +17,20 @@ export interface ProviderStatus {
   nvidiaNim: {
     configured: boolean;
   };
+  ollama?: {
+    configured: boolean;
+    model: string;
+    baseUrl: string;
+    reachable?: boolean;
+    modelFound?: boolean;
+    modelsAvailable?: string[];
+    error?: string | null;
+    capabilities?: {
+      scriptPlanning: boolean;
+      voiceCasting: boolean;
+      soundDesign: boolean;
+    };
+  };
 }
 
 export interface ProviderVoice {
@@ -50,6 +64,92 @@ export const fetchElevenLabsVoices = async (): Promise<ProviderVoice[]> => {
   return payload.voices as ProviderVoice[];
 };
 
+export interface LlmProductionPlanLine {
+  speaker?: string;
+  type: string;
+  text: string;
+  performanceNote?: string;
+  assignedVoiceRoleName?: string;
+}
+
+export interface LlmProductionVoiceRole {
+  roleName: string;
+  characterDescription: string;
+  ageRange: string;
+  accent: string;
+  emotionalStyle: string;
+  pace: "slow" | "measured" | "conversational" | "quick" | "fast-read";
+  performanceNotes: string;
+  pronunciationNotes?: string;
+  elevenLabsSearchQuery?: string;
+}
+
+export interface LlmProductionSoundCue {
+  lineNumber?: number;
+  label: string;
+  location: string;
+  texture: string;
+  sfxMoment: string;
+  foley?: string;
+  startTime?: number;
+  endTime?: number;
+  notes?: string;
+}
+
+export interface LlmProductionMusicCue {
+  label: string;
+  style: string;
+  tempo: string;
+  instrumentation: string;
+  mood: string;
+  startTime?: number;
+  endTime?: number;
+  notes?: string;
+  elevenLabsMusicPrompt?: string;
+}
+
+export interface LlmProductionPlan {
+  title: string;
+  scriptLines: LlmProductionPlanLine[];
+  voiceRoles: LlmProductionVoiceRole[];
+  soundCues: LlmProductionSoundCue[];
+  musicCues: LlmProductionMusicCue[];
+  mixNotes: string;
+}
+
+export interface LlmProductionPlanRequest {
+  input: string;
+  brief: Record<string, unknown>;
+  targetDuration: number;
+  voiceCatalog?: ProviderVoice[];
+}
+
+export const generateLlmProductionPlan = async (input: LlmProductionPlanRequest): Promise<LlmProductionPlan> => {
+  const controller = new AbortController();
+  const timeoutMs = 6.5 * 60 * 1000; // Kept just above the backend's own Ollama timeout so the backend's clearer error wins the race.
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${providerProxyBaseUrl}/api/llm/production-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(await providerErrorMessage(response));
+    }
+    return response.json();
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(
+        `Ollama did not respond within ${timeoutMs / 1000}s. It may still be loading Llama 3 into memory, or generating on slow hardware — check the "npm run server" terminal window for progress, or try a shorter description.`,
+      );
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+};
 export interface ElevenLabsSpeechPreviewRequest {
   text: string;
   voiceId?: string;
@@ -90,3 +190,120 @@ export const generateElevenLabsSpeechPreview = async (input: ElevenLabsSpeechPre
   }
   return response.blob();
 };
+
+export interface FullSpotLine {
+  text: string;
+  voiceId?: string;
+  voiceSettings?: ElevenLabsSpeechPreviewRequest["voiceSettings"];
+  pauseAfterMs?: number;
+}
+
+export const generateElevenLabsFullSpot = async (lines: FullSpotLine[]): Promise<Blob> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/voice/elevenlabs/full-spot`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lines }),
+  });
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.blob();
+};
+
+export interface ElevenLabsSoundEffectRequest {
+  text: string;
+  durationSeconds?: number;
+  promptInfluence?: number;
+}
+
+export const generateElevenLabsSoundEffect = async (input: ElevenLabsSoundEffectRequest): Promise<Blob> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/sound/elevenlabs/effect`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: input.text,
+      durationSeconds: input.durationSeconds,
+      promptInfluence: input.promptInfluence,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.blob();
+};
+
+export interface ElevenLabsMusicRequest {
+  prompt: string;
+  musicLengthMs?: number;
+}
+
+export const generateElevenLabsMusic = async (input: ElevenLabsMusicRequest): Promise<Blob> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/music/elevenlabs/compose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: input.prompt,
+      musicLengthMs: input.musicLengthMs,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.blob();
+};
+
+export interface ElevenLabsDubbingRequest {
+  sourceUrl?: string;
+  targetLang: string;
+  sourceLang?: string;
+  name?: string;
+  targetAccent?: string;
+  numSpeakers?: number;
+  watermark?: boolean;
+  startTime?: number;
+  endTime?: number;
+  dropBackgroundAudio?: boolean;
+  disableVoiceCloning?: boolean;
+}
+
+export interface ElevenLabsDubbingJobResponse {
+  dubbing_id: string;
+  expected_duration_sec?: number;
+}
+
+export interface ElevenLabsDubbingStatusResponse {
+  dubbing_id: string;
+  name?: string;
+  status: "dubbing" | "dubbed" | "failed";
+  target_languages?: string[];
+  error?: string;
+}
+
+export const createElevenLabsDubbingJob = async (input: ElevenLabsDubbingRequest): Promise<ElevenLabsDubbingJobResponse> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/dubbing/elevenlabs/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.json();
+};
+
+export const checkElevenLabsDubbingStatus = async (dubbingId: string): Promise<ElevenLabsDubbingStatusResponse> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/dubbing/elevenlabs/status?dubbingId=${encodeURIComponent(dubbingId)}`);
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.json();
+};
+
+export const fetchElevenLabsDubbingAudio = async (dubbingId: string, targetLang: string): Promise<Blob> => {
+  const response = await fetch(`${providerProxyBaseUrl}/api/dubbing/elevenlabs/audio?dubbingId=${encodeURIComponent(dubbingId)}&lang=${encodeURIComponent(targetLang)}`);
+  if (!response.ok) {
+    throw new Error(await providerErrorMessage(response));
+  }
+  return response.blob();
+};
+

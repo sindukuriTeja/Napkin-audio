@@ -102,7 +102,6 @@ export interface VoiceProviderConfig {
   endpoint?: string;
   defaultVoiceId?: string;
 }
-
 export interface VoiceTake {
   id: string;
   lineId?: string;
@@ -116,6 +115,8 @@ export interface VoiceTake {
   isPreferred: boolean;
   notes: string;
   createdAt: string;
+  pitch?: "low" | "normal" | "high";
+  smoothing?: number;
 }
 
 export interface SoundCue {
@@ -130,6 +131,7 @@ export interface SoundCue {
   endTime: number;
   notes: string;
   rightsId?: string;
+  audioUrl?: string;
 }
 
 export interface MusicCue {
@@ -143,6 +145,7 @@ export interface MusicCue {
   endTime: number;
   notes: string;
   rightsId?: string;
+  audioUrl?: string;
 }
 
 export interface TimelineBlock {

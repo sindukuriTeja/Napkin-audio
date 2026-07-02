@@ -15,39 +15,48 @@ import { assignVoiceRolesToScript } from "../lib/scriptRoles";
 import type { Brief, CraftQualityScore, Project, RightsRecord } from "../types/models";
 import { exportPresets, stationSpecs } from "./stationSpecs";
 
-export const defaultScript = `SFX: A kettle clicks off. A soft kitchen morning.
-MOTHER: You know that tiny panic when the school lunch is still in the fridge?
-CHILD: Again?
-MOTHER: Exactly. Again.
-ANNOUNCER: With Napkin Fresh, weekday mornings feel a little less impossible.
-SFX: Lunchbox snaps shut.
-ANNOUNCER: Pick it up today in store or visit napkinfresh.ie.
-LEGAL: Subject to availability. See website for full terms and participating stores.
-MNEMONIC: Napkin Fresh. Sorted before the bell.`;
+export const defaultScript = `SFX: Wind over open hills. Distant sheep. A soft sea swell far below.
+MUSIC: Sparse piano. Very quiet.
+VO1: No reception desk.
+VO1: No room number.
+VO1: No corridor carpet.
+VO1: No little card telling you breakfast ends at ten.
+SFX: Sliding van door opens. Kettle clicks. Rain taps softly on the roof.
+VO2: Just Kerry outside the window.
+VO2: A mountain behind you.
+VO2: The Atlantic below.
+VO2: And nowhere you need to be.
+SFX: A blanket shakes out. Small laugh. Wind opens wider.
+VO3: Volkswagen camper vans don't just take you through Ireland.
+VO3: They let you stop in the middle of it.
+MUSIC: Small lift.
+ANNOUNCER: Volkswagen Camper Vans.
+ANNOUNCER: Wake up here.
+SFX: Sea, wind, kettle. Fade.`;
 
 export const defaultBrief = (): Brief => ({
-  projectName: "Napkin Fresh Morning Save",
-  client: "Napkin",
-  brand: "Napkin Fresh",
-  campaign: "Morning Save",
-  productService: "Fresh lunchbox range",
-  category: "Retail food",
-  audience: "Busy parents on weekday mornings",
-  tone: "Warm, lightly comic, useful",
-  energyLevel: 6,
-  desiredEmotionalResponse: "Relief with a smile",
-  targetDuration: 30,
-  mandatoryPhrases: ["Napkin Fresh"],
-  legalLines: ["Subject to availability."],
+  projectName: "Wake Up Here",
+  client: "Volkswagen Ireland",
+  brand: "Volkswagen Camper Vans",
+  campaign: "Wake Up Here",
+  productService: "Volkswagen camper van range",
+  category: "Automotive",
+  audience: "Irish adults 30–55, outdoors-minded, weekend escape seekers",
+  tone: "Quiet, cinematic, unhurried, poetic",
+  energyLevel: 3,
+  desiredEmotionalResponse: "Stillness, freedom, longing to be there",
+  targetDuration: 38,
+  mandatoryPhrases: ["Volkswagen Camper Vans"],
+  legalLines: [],
   offer: "",
-  cta: "Visit napkinfresh.ie",
+  cta: "Wake up here",
   stationGroup: "irish-radio-generic",
   language: "English",
   accentPreference: "soft Irish",
-  brandVoiceNotes: "Helpful, human, never shouty.",
-  bannedPhrases: ["game changer"],
+  brandVoiceNotes: "Warm, unhurried, intimate. Never shouty. Feels like a friend who already lives this way.",
+  bannedPhrases: ["game changer", "revolutionary", "ultimate"],
   competitorReferences: "",
-  sonicLogoNotes: "A clean lunchbox snap can become the mnemonic.",
+  sonicLogoNotes: "Sea, wind, kettle fade to silence is the brand mnemonic. Do not undercut it with music.",
 });
 
 const emptyCraftQuality: CraftQualityScore = {
@@ -118,25 +127,37 @@ export const createProject = (brief: Brief = defaultBrief(), rawScript = default
     craftMemory: [
       {
         id: "memory-silence-payoff",
-        title: "Leave room before the reveal",
-        principle: "A tiny silence before a brand or joke payoff makes the listener lean in.",
-        example: "Half beat, then brand line.",
+        title: "Leave room before the brand reveal",
+        principle: "A tiny silence before the brand line makes the listener lean in.",
+        example: "Half beat of sea and wind, then: Volkswagen Camper Vans.",
         category: "timing",
         source: "Senior producer note",
         confidence: 0.82,
-        usageNotes: "Use sparingly; dead air feels intentional only when the setup is clear.",
+        usageNotes: "The mnemonic only lands if the VO before it has fully resolved.",
         createdAt: nowIso(),
         updatedAt: nowIso(),
       },
       {
-        id: "memory-legal-dry",
-        title: "Legal copy stays dry",
-        principle: "Do not hide legal under music or a joke.",
-        example: "Lower bed, clear read, no comic accent.",
-        category: "legal",
+        id: "memory-vo-fragmented",
+        title: "Short lines breathe",
+        principle: "Fragmenting the VO into short lines lets the sound design fill the space between them.",
+        example: "No room number. / No corridor carpet. — each line is its own beat.",
+        category: "performance",
         source: "Production discipline",
+        confidence: 0.88,
+        usageNotes: "Direct the voice to find the end of each line before moving to the next.",
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      },
+      {
+        id: "memory-sfx-bed",
+        title: "SFX is the world, music is the emotion",
+        principle: "Keep SFX naturalistic and music minimal so neither fights the voice.",
+        example: "Wind and sea under VO1 and VO2. Piano lift only at the brand moment.",
+        category: "sound_design",
+        source: "Mix discipline",
         confidence: 0.9,
-        usageNotes: "Always verify final requirements with the station and client.",
+        usageNotes: "If the SFX is doing its job the music barely needs to exist.",
         createdAt: nowIso(),
         updatedAt: nowIso(),
       },
@@ -154,12 +175,14 @@ export const createProject = (brief: Brief = defaultBrief(), rawScript = default
 
 export const recomputeProject = (project: Project, summary = "Studio state refreshed", options: { trackVersion?: boolean } = {}): Project => {
   const trackVersion = options.trackVersion ?? true;
+  const isResetStage = summary === "Initial project" || summary === "Script parsed";
   const sound = SoundDesignAgent.buildCues(project);
   const withSound = {
     ...project,
-    soundCues: project.soundCues.length ? project.soundCues : sound.soundCues,
-    musicCues: project.musicCues.length ? project.musicCues : sound.musicCues,
+    soundCues: isResetStage && !project.soundCues.length ? sound.soundCues : project.soundCues,
+    musicCues: isResetStage && !project.musicCues.length ? sound.musicCues : project.musicCues,
   };
+
   const agentRecommendations = [
     TimingAgent.recommendation(withSound),
     ...EmotionAgent.recommendations(withSound),
@@ -203,7 +226,32 @@ export const recomputeProject = (project: Project, summary = "Studio state refre
 
 export const updateScriptFromText = (project: Project, rawScript: string) => {
   if (project.scriptLocked) return project;
+  const previousLines = project.script.lines;
   const parsed = ScriptParserAgent.parse(rawScript, project.brief.targetDuration);
   const { script, voiceRoles } = assignVoiceRolesToScript(parsed, project.brief, project.voiceRoles);
-  return recomputeProject({ ...project, script, voiceRoles, soundCues: [], musicCues: [] }, "Script parsed");
+
+  // Every parse regenerates fresh line ids, even for unchanged text, so a naive lineId lookup would
+  // orphan every sound cue on every parse. Re-link cues to their matching new line by position + text
+  // instead: content that's unchanged keeps its cue (and audioUrl); content that's genuinely gone
+  // loses its cue; content that's genuinely new gets a freshly detected one below.
+  const previousLineIdByPosition = new Map(previousLines.map((line) => [`${line.lineNumber}::${line.text}`, line.id]));
+  const newLineIdByOldLineId = new Map<string, string>();
+  script.lines.forEach((line) => {
+    const oldId = previousLineIdByPosition.get(`${line.lineNumber}::${line.text}`);
+    if (oldId) newLineIdByOldLineId.set(oldId, line.id);
+  });
+  const currentLineIds = new Set(script.lines.map((line) => line.id));
+
+  const reconciledSoundCues = project.soundCues
+    .map((cue) => (cue.lineId && newLineIdByOldLineId.has(cue.lineId) ? { ...cue, lineId: newLineIdByOldLineId.get(cue.lineId) } : cue))
+    .filter((cue) => !cue.lineId || currentLineIds.has(cue.lineId));
+
+  const coveredLineIds = new Set(reconciledSoundCues.map((cue) => cue.lineId).filter((id): id is string => Boolean(id)));
+  const detected = SoundDesignAgent.buildCues({ ...project, script, soundCues: [], musicCues: [] });
+  const newCuesForFreshLines = detected.soundCues.filter((cue) => cue.lineId && !coveredLineIds.has(cue.lineId));
+
+  return recomputeProject(
+    { ...project, script, voiceRoles, soundCues: [...reconciledSoundCues, ...newCuesForFreshLines] },
+    "Script parsed",
+  );
 };

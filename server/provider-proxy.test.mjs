@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -19,13 +19,19 @@ import {
 } from "./provider-proxy.mjs";
 
 describe("provider proxy helpers", () => {
-  it("reports provider configuration without exposing secrets", () => {
-    const status = providerStatus({
+  it("reports provider configuration without exposing secrets", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ models: [{ name: "llama3:latest" }] }), { status: 200 }),
+    );
+
+    const status = await providerStatus({
       ELEVENLABS_API_KEY: "secret-key",
       ELEVENLABS_DEFAULT_VOICE_ID: "",
       NVIDIA_RIVA_ENDPOINT: "https://riva.example",
       NVIDIA_RIVA_API_KEY: "riva-secret",
       NVIDIA_NIM_API_KEY: "",
+      OLLAMA_BASE_URL: "http://127.0.0.1:11434",
+      OLLAMA_MODEL: "llama3",
     });
 
     expect(status).toEqual({
@@ -47,9 +53,37 @@ describe("provider proxy helpers", () => {
       nvidiaNim: {
         configured: false,
       },
+      ollama: {
+        configured: true,
+        model: "llama3",
+        baseUrl: "http://127.0.0.1:11434",
+        reachable: true,
+        modelFound: true,
+        modelsAvailable: ["llama3:latest"],
+        error: null,
+        capabilities: {
+          scriptPlanning: true,
+          voiceCasting: true,
+          soundDesign: true,
+        },
+      },
     });
     expect(JSON.stringify(status)).not.toContain("secret-key");
     expect(JSON.stringify(status)).not.toContain("riva-secret");
+
+    fetchMock.mockRestore();
+  });
+
+  it("reports Ollama as unreachable without hanging when the connection fails", async () => {
+    const fetchMock = vi.spyOn(global, "fetch").mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+    const status = await providerStatus({ OLLAMA_BASE_URL: "http://127.0.0.1:59999", OLLAMA_MODEL: "llama3" });
+
+    expect(status.ollama.reachable).toBe(false);
+    expect(status.ollama.modelFound).toBe(false);
+    expect(status.ollama.error).toContain("Could not reach Ollama");
+
+    fetchMock.mockRestore();
   });
 
   it("validates preview requests before provider work starts", () => {
