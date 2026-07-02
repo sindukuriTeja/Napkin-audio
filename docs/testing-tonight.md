@@ -22,9 +22,17 @@ curl http://127.0.0.1:8787/health
 curl http://127.0.0.1:8787/api/providers/status
 ```
 
+Optional Ollama reachability check, needed only for the Llama 3 production-plan flow:
+
+```bash
+curl http://127.0.0.1:11434/api/tags
+```
+
 ## Core Flow
 
 - Dashboard loads with project name, brand, duration, approval status, quality score, versions, and next craft move.
+- "Generate full production plan" (Studio tab) with Ollama running returns a script, voice roles, sound cues, music cues, and a brand mnemonic within a few minutes.
+- With Ollama unreachable, the same action fails with a clear connection/timeout error instead of hanging silently.
 - Brief fields can be edited without crashing.
 - Duration can be changed to 10, 15, 20, 30, 40, 50, 60, and 120 seconds.
 - Script tab accepts pasted copy and reparses it.
@@ -45,6 +53,7 @@ curl http://127.0.0.1:8787/api/providers/status
 - With `npm run server` and valid ElevenLabs values in `.env`, voice take generation returns an audio preview through the server proxy.
 - Voice roles can be added and edited.
 - VO Voice Transformer requires consent before attempting a provider preview.
+- Full-spot render downloads a single `full-spot.mp3` covering every spoken line (requires ElevenLabs credentials).
 - Sound Design shows sound cues, SFX/music controls, and visual timeline.
 - Mix sliders move and do not break layout.
 - Export tab downloads project JSON, script markdown, cue sheet, QC report, Craft Quality report, and production notes.

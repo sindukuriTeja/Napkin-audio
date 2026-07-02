@@ -5,7 +5,7 @@ Napkin Audio AI Studio now includes a local seed knowledge layer that works with
 ## What is built
 
 - `src/data/studioKnowledge.ts` stores curated studio knowledge chunks for radio script timing, voice casting, sound design, mix targets, export QC, and compliance risk.
-- `src/data/importedStudioKnowledge.ts` stores imported RAG package items generated from the Manus dataset.
+- `src/data/importedStudioKnowledge.ts` stores imported RAG package items generated from the Napkin Audio AI Studio RAG Knowledge Dataset.
 - `scripts/import-napkin-rag.mjs` converts a validated `napkin-audio-rag` folder into app-readable `StudioKnowledgeItem` records.
 - `StudioKnowledgeAgent.retrieve(project)` scores those chunks against the current project brief, parsed script, voice roles, QC issues, and agent recommendations.
 - The Dashboard shows the top producer-assistant knowledge hits.
@@ -13,7 +13,7 @@ Napkin Audio AI Studio now includes a local seed knowledge layer that works with
 
 ## Current boundary
 
-This is a lightweight local RAG-style retriever with imported Manus knowledge, not a full vector database pipeline yet. It does not call OpenAI, ElevenLabs, Pinecone, Supabase, or any external embedding service. It is safe for demos and works offline.
+This is a lightweight local RAG-style retriever with imported knowledge, not a full vector database pipeline yet. It does not call OpenAI, ElevenLabs, Pinecone, Supabase, or any external embedding service. It is safe for demos and works offline.
 
 ## Imported package
 
@@ -39,7 +39,7 @@ This rewrites `src/data/importedStudioKnowledge.ts`.
 
 ## Next ingestion path
 
-When the Manus knowledge pack is ready, structure it as small source-backed chunks:
+When the next knowledge pack is ready, structure it as small source-backed chunks:
 
 - `title`
 - `topic`

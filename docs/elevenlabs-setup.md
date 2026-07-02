@@ -2,6 +2,8 @@
 
 Napkin Audio AI Studio is designed so ElevenLabs keys stay server-side. Do not put real API keys into frontend code.
 
+This guide covers ElevenLabs only. For the separate Llama 3 / Ollama autonomous production-plan feature, see "Local LLM (Ollama)" in the main [README.md](../README.md).
+
 ## 1. Create `.env`
 
 Copy `.env.example` to `.env`:
@@ -61,14 +63,17 @@ The local proxy keeps the API key out of the browser and forwards these routes:
 
 - `POST /api/voice/elevenlabs/preview`
 - `GET /api/voice/elevenlabs/voices`
+- `POST /api/voice/elevenlabs/full-spot`
 - `POST /api/voice/elevenlabs/voice-changer`
 - `POST /api/sound/elevenlabs/effect`
 - `POST /api/music/elevenlabs/compose`
 - `POST /api/dubbing/elevenlabs/create`
+- `GET /api/dubbing/elevenlabs/status?dubbingId=...`
+- `GET /api/dubbing/elevenlabs/audio?dubbingId=...&lang=...`
 
 Voice catalog loading returns real ElevenLabs voices when a key is configured. Without a key, it returns a mock catalog so role mapping can still be demonstrated locally.
 
-Voice, VO voice transformation, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. The Voices tab can save the speech preview into the current browser session as a take. Dubbing currently supports JSON requests with a public `sourceUrl`; durable audio asset storage and final mix rendering are still future work.
+Voice, VO voice transformation, sound effect, and music routes return audio bytes from ElevenLabs when a real key is configured. The Voices tab can save the speech preview into the current browser session as a take, and can render every spoken line into one downloadable `full-spot.mp3` via `/api/voice/elevenlabs/full-spot` (max 40 lines per request). Dubbing supports JSON requests with a public `sourceUrl` (create/status/audio); durable audio asset storage and final mix rendering are still future work.
 
 ## Current limitation
 

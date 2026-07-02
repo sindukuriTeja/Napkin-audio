@@ -3,14 +3,22 @@
 This guide provides a visual map of the **Napkin Audio AI Studio** UI to help you understand the production workflow and the "AI Director" capabilities.
 
 ## 1. The Production Sidebar (Left)
-The studio is organized into a sequential radio production workflow:
-- **Studio (Dashboard)**: High-level health check, AI Craft Quality score, and project status.
+The studio is organized into a sequential radio production workflow, grouped into three sections:
+
+Project:
+- **Studio**: High-level health check, AI Craft Quality score, project status, and the "generate full production plan" entry point (Llama 3 via Ollama).
 - **Brief**: Define the brand, target audience, tone, and mandatories.
-- **Script Parser**: The engine that breaks down raw text into timed voice, SFX, and music lines.
-- **Voice**: Cast roles using ElevenLabs or Mock voices and generate speech takes.
+
+Production:
+- **Script**: The engine that breaks down raw text into timed voice, SFX, and music lines.
+- **Voices**: Cast roles using ElevenLabs or Mock voices, generate speech takes, run the VO Voice Transformer, and render a full-spot MP3.
 - **Sound Design**: Manage SFX and music cues on a visual timeline.
-- **Auto Mix**: AI-assisted leveling and audio processing settings.
-- **Export**: Station-specific packaging and technical compliance checks.
+- **Mix**: AI-assisted leveling, ducking recommendations, and browser-based (Web Audio) mix rendering.
+
+Delivery:
+- **Compliance**: QC checks for duration, mandatories, CTA, legal speed, voice assignment, rights, and station specs.
+- **Export**: Station-specific packaging, presets, and download formats.
+- **Memory**: Command log, version history, and studio knowledge retrieval hits.
 
 ## 2. The Main Studio Console (Center)
 - **Status Cards**: Real-time feedback on script duration vs. target duration.
@@ -42,8 +50,9 @@ A 0-100 rating based on:
 
 ## 5. Local-First Architecture
 - **Mock Providers**: Works offline by generating synthetic "beep" placeholders for voices/SFX.
-- **ElevenLabs Integration**: When the server proxy is running, it generates high-fidelity speech and sound.
-- **RAG Knowledge**: Uses a built-in retrieval layer to give you industry-standard advice on radio mixing and compliance.
+- **ElevenLabs Integration**: When the server proxy is running, it generates high-fidelity speech, sound effects, music, dubbing, and full-spot MP3 renders.
+- **Llama 3 via Ollama**: When Ollama is running locally, the Studio tab can turn a single text input into a full script, voice-role, sound-cue, and music-cue plan.
+- **RAG Knowledge**: Uses a built-in retrieval layer (seed data plus an imported knowledge dataset) to give you industry-standard advice on radio mixing and compliance.
 
 ---
 *Created to help you navigate the Napkin Audio AI Studio MVP.*
