@@ -8,6 +8,19 @@
       content="Napkin Audio AI Studio, a local-first AI audio craft studio for scripts, performance, sound design, QC, and export packages."
     />
     <title>Napkin Audio AI Studio</title>
+    <script>
+      (function () {
+        try {
+          var saved = window.localStorage.getItem("napkin-audio-ai-studio-theme");
+          var theme = saved === "light" || saved === "dark"
+            ? saved
+            : (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+          document.documentElement.dataset.theme = theme;
+        } catch (error) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

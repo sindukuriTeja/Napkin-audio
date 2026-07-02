@@ -27,6 +27,8 @@ For the current local studio knowledge retrieval layer, use [docs/rag-knowledge.
 
 CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm test`, and `npm run build` on Node 22 for pull requests and pushes to `main` and `codex/**`.
 
+To put this live for other people to use, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## What is included
 
 - Vite, React, and TypeScript app.
@@ -42,7 +44,7 @@ CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm test`, and `npm run build` o
 - Voice-provider abstraction for `MockVoiceProvider`, `ElevenLabsProvider`, and `NvidiaRivaProvider`.
 - Optional local provider proxy scaffold for server-side provider credentials.
 - Sound world panel and visual timeline.
-- Rough mix control surface with browser-based (Web Audio) mix rendering.
+- Rough mix control surface with browser-based (Web Audio) mix rendering, exported as a downloadable MP3.
 - Audio Director for spoken production decisions, plus typed command fallback.
 - Browser speech-recognition support where available; spoken commands become reviewable Apply/Reject proposals.
 - Apply/reject command proposals, with browser autosave for the current project.
