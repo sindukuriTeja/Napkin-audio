@@ -858,7 +858,7 @@ export function App() {
       // Switch to Voices tab so user sees the result immediately
       setActiveTab("Voices");
     } catch {
-      setAutoAssignStatus("Could not load voices — proxy may not be running. Go to Voices tab and click Load & auto-assign voices manually.");
+      setAutoAssignStatus("Script parsed. Voice auto-assign skipped — voice proxy not available. Assign voices manually in the Voices tab.");
     }
   };
 
@@ -2245,8 +2245,14 @@ export function App() {
             </div>
             <div className="tool-stack" style={{ marginTop: "0.75rem" }}>
               <button className="primary" disabled={project.scriptLocked} onClick={() => {
+                const trimmed = scriptDraft.trim();
+                if (!trimmed) {
+                  setAutoAssignStatus("Nothing to parse — paste or type a script above first.");
+                  return;
+                }
                 setProject((p) => updateScriptFromText(p, scriptDraft));
-                triggerAutoVoiceAssign();
+                setAutoAssignStatus("Script parsed successfully.");
+                triggerAutoVoiceAssign().catch(() => {});
               }}>
                 <FileAudio size={18} /> Parse Script
               </button>
