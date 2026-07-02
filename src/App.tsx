@@ -858,24 +858,7 @@ export function App() {
       // Switch to Voices tab so user sees the result immediately
       setActiveTab("Voices");
     } catch {
-      const fallbackVoices: ProviderVoice[] = [
-        { voiceId: "mock-warm-irish-announcer", name: "Mock Warm Irish Announcer", category: "mock", description: "Warm, clear, radio-friendly announcer.", labels: { accent: "neutral Irish", age: "30-50", style: "warm, direct" }, source: "mock" },
-        { voiceId: "mock-dry-character", name: "Mock Dry Character", category: "mock", description: "Grounded character lane.", labels: { accent: "Dublin", age: "25-45", style: "deadpan, natural" }, source: "mock" },
-        { voiceId: "mock-legal-clear", name: "Mock Legal Clear Read", category: "mock", description: "Measured legal read.", labels: { accent: "neutral Irish", age: "30-60", style: "measured, clear" }, source: "mock" },
-      ];
-      setProviderVoices(fallbackVoices);
-      const pool = fallbackVoices;
-      setProject((current) => {
-        let poolIndex = 0;
-        const updatedRoles = current.voiceRoles.map((role) => {
-          const voice = pool[poolIndex++ % pool.length];
-          return { ...role, provider: "mock" as const, providerVoiceId: voice.voiceId, rightsNotes: `Auto-assigned mock: ${voice.name}.` };
-        });
-        setAutoAssignStatus(`✓ ${updatedRoles.length} role${updatedRoles.length !== 1 ? "s" : ""} assigned mock voices. Connect ElevenLabs for real voices.`);
-        setProviderVoicesMessage(`${fallbackVoices.length} mock voices assigned.`);
-        return recomputeProject({ ...current, voiceRoles: updatedRoles }, "Auto-assigned mock voices (offline fallback)");
-      });
-      setActiveTab("Voices");
+      setAutoAssignStatus("Could not load voices — proxy may not be running. Go to Voices tab and click Load & auto-assign voices manually.");
     }
   };
 
@@ -2262,14 +2245,8 @@ export function App() {
             </div>
             <div className="tool-stack" style={{ marginTop: "0.75rem" }}>
               <button className="primary" disabled={project.scriptLocked} onClick={() => {
-                const trimmed = scriptDraft.trim();
-                if (!trimmed) {
-                  setAutoAssignStatus("Nothing to parse — paste or type a script above first.");
-                  return;
-                }
                 setProject((p) => updateScriptFromText(p, scriptDraft));
-                setAutoAssignStatus("Script parsed successfully.");
-                triggerAutoVoiceAssign().catch(() => {});
+                triggerAutoVoiceAssign();
               }}>
                 <FileAudio size={18} /> Parse Script
               </button>

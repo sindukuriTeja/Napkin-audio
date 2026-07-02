@@ -683,12 +683,17 @@ export const handleLlmProductionPlan = async (request, response, env = process.e
     clearTimeout(timeout);
   }
 };
-export const createProviderProxyServer = (env = process.env) =>
-  createServer(async (request, response) => {
+// The actual router, shared by two deployment shapes:
+// 1. `createProviderProxyServer` below wraps this in a plain Node `http` server
+//    for local dev (`npm run server`) and always-on hosts like Render/Railway.
+// 2. `api/[...path].js` calls this directly from a Vercel serverless function,
+//    so a Vercel-only deployment (frontend + API together) runs the exact same
+//    route handling with no duplicated logic.
+export const routeProviderProxyRequest = async (request, response, env = process.env) => {
   const requestOrigin = request.headers["origin"] ?? "";
   try {
     if (request.method === "OPTIONS") return json(response, 204, {}, requestOrigin);
-    if (request.method === "GET" && request.url === "/health") {
+    if (request.method === "GET" && (request.url === "/health" || request.url === "/api/health")) {
       return json(response, 200, { ok: true, service: "Napkin Audio AI Studio provider proxy" }, requestOrigin);
     }
     if (request.method === "GET" && request.url === "/api/providers/status") {
@@ -756,7 +761,10 @@ export const createProviderProxyServer = (env = process.env) =>
       detail: error instanceof Error ? error.message : "Unknown error",
     }, requestOrigin);
   }
-  });
+};
+
+export const createProviderProxyServer = (env = process.env) =>
+  createServer((request, response) => routeProviderProxyRequest(request, response, env));
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   loadLocalEnv(resolve(process.cwd(), ".env"), process.env, { override: true });

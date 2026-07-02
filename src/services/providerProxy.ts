@@ -43,8 +43,19 @@ export interface ProviderVoice {
   source: "mock" | "elevenlabs";
 }
 
+// Three ways this gets resolved, in order:
+// 1. VITE_PROVIDER_PROXY_URL set explicitly — for a split deployment where the
+//    proxy runs on its own always-on host (Render, Railway, Fly.io) separate
+//    from the static frontend.
+// 2. Local dev (`npm run dev`) — defaults to the standalone proxy started by
+//    `npm run server` on port 8787.
+// 3. A built production bundle with no override — defaults to "" (a relative
+//    path), which is correct when the proxy is deployed as Vercel serverless
+//    functions alongside the frontend under the same domain (see
+//    api/[...path].js): `${providerProxyBaseUrl}/api/...` then just resolves
+//    to same-origin "/api/...".
 export const providerProxyBaseUrl =
-  import.meta.env.VITE_PROVIDER_PROXY_URL?.replace(/\/$/, "") ?? "";
+  import.meta.env.VITE_PROVIDER_PROXY_URL?.replace(/\/$/, "") ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "");
 
 export const fetchProviderStatus = async (): Promise<ProviderStatus> => {
   const response = await fetch(`${providerProxyBaseUrl}/api/providers/status`);

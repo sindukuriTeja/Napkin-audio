@@ -7,7 +7,7 @@
     "dev": "vite",
     "server": "node server/provider-proxy.mjs",
     "demo:check": "node scripts/demo-readiness.mjs",
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "test": "vitest run",
     "preview": "vite preview"
   },
