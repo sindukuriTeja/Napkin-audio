@@ -1243,17 +1243,15 @@ export function App() {
         throw new Error("Could not decode any audio assets.");
       }
 
-      // Re-sequence voice lines back-to-back using their REAL rendered length instead of the
-      // pre-generation word-count estimate. ElevenLabs takes almost never match that estimate
-      // exactly, so scheduling off the estimate is what causes one line's voice to start while
-      // the previous line's real audio is still playing — the actual cause of "overlapping voice."
-      const voiceGapSeconds = 0.25;
+      // Re-sequence voice lines back-to-back using their REAL decoded buffer length.
+      // No gap between lines — the ElevenLabs audio already has natural leading/trailing
+      // silence baked in. Adding extra gaps stacks up into minutes of dead air on long scripts.
       let voiceCursor = 0;
       const retimedVoice = validAssets
         .filter((asset) => asset.type === "voice")
         .map((asset) => {
           const start = voiceCursor;
-          voiceCursor = start + asset.buffer.duration + voiceGapSeconds;
+          voiceCursor = start + asset.buffer.duration;
           return { ...asset, startTime: start };
         });
       let nextRetimedVoiceIndex = 0;
@@ -1264,15 +1262,11 @@ export function App() {
         return retimed;
       });
 
-      // Drive the mix length from actual decoded audio, not planned estimates.
-      // Voice is already retimed to real buffer lengths above.
-      // For SFX/music we use the ACTUAL decoded buffer duration (not the planned endTime which
-      // reflects the original script estimate and is often much shorter than the real voice).
-      const lastVoiceEnd = retimedVoice.length ? voiceCursor - voiceGapSeconds : 0;
-      const lastSfxMusicEnd = finalAssets
-        .filter((asset) => asset.type !== "voice")
-        .reduce((max, asset) => Math.max(max, asset.startTime + asset.buffer.duration), 0);
-      const duration = Math.max(lastVoiceEnd, lastSfxMusicEnd, 1) + 0.5;
+      // Canvas length = actual voice length only. Music/SFX are clamped to this.
+      // Never use music/SFX buffer duration to drive canvas length — a 60s music
+      // bed would add 30s of silence after a 30s voice track.
+      const lastVoiceEnd = voiceCursor;
+      const duration = Math.max(lastVoiceEnd, 1);
       // Use the actual decoded sample rate, not a hardcoded assumption
       const sampleRate = validAssets[0].buffer.sampleRate;
       const offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * duration), sampleRate);
@@ -1322,37 +1316,38 @@ export function App() {
       setMixRenderingMessage("Mixing audio tracks...");
       finalAssets.forEach((asset) => {
         const start = Math.max(0, asset.startTime);
-        const naturalEnd = start + asset.buffer.duration;
-        // Loop music/SFX that are shorter than the full mix so there's no silence tail
-        const needsLoop = asset.type !== "voice" && naturalEnd < duration - 0.5;
+        // Clamp all assets to the canvas duration — nothing plays past voice end
+        const naturalEnd = Math.min(start + asset.buffer.duration, duration);
+        if (naturalEnd <= start) return; // asset starts after canvas end, skip it
+
+        // Loop music/SFX that are shorter than the canvas so they fill it without silence gaps
+        const assetLength = asset.buffer.duration;
+        const needsLoop = asset.type !== "voice" && assetLength < (duration - start);
 
         const source = offlineCtx.createBufferSource();
         source.buffer = asset.buffer;
         if (needsLoop) {
           source.loop = true;
           source.loopStart = 0;
-          source.loopEnd = asset.buffer.duration;
+          source.loopEnd = assetLength;
         }
 
         if (asset.type === "voice" && asset.pitch) {
-          if (asset.pitch === "low") {
-            source.playbackRate.value = 0.85;
-          } else if (asset.pitch === "high") {
-            source.playbackRate.value = 1.15;
-          }
+          if (asset.pitch === "low") source.playbackRate.value = 0.85;
+          else if (asset.pitch === "high") source.playbackRate.value = 1.15;
         }
 
         let finalNode: AudioNode = source;
         if (asset.type === "voice" && typeof asset.smoothing === "number" && asset.smoothing > 0) {
           const filter = offlineCtx.createBiquadFilter();
           filter.type = "lowpass";
-          const cutoffFreq = 20000 - (asset.smoothing * 185);
-          filter.frequency.value = Math.max(1500, cutoffFreq);
+          filter.frequency.value = Math.max(1500, 20000 - asset.smoothing * 185);
           source.connect(filter);
           finalNode = filter;
         }
 
         const gainNode = offlineCtx.createGain();
+        // stopAt is always ≤ duration — never let music/sfx play past voice end
         const stopAt = needsLoop ? duration : naturalEnd;
 
         if (asset.type === "voice") {
@@ -1367,8 +1362,8 @@ export function App() {
         gainNode.connect(offlineCtx.destination);
 
         source.start(start);
-        // Stop looping sources at end of mix; non-looping sources stop naturally
-        if (needsLoop) source.stop(stopAt);
+        // Always set a hard stop so nothing bleeds past the canvas
+        source.stop(stopAt);
       });
 
       setMixRenderingMessage("Rendering final stereo mix...");
