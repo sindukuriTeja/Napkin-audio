@@ -8,7 +8,7 @@
 import { routeProviderProxyRequest } from "../server/provider-proxy.mjs";
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
 };
 
 export default async function handler(request, response) {

@@ -3,14 +3,24 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
+    "api/llm/production-plan.mjs": {
+      "maxDuration": 120
+    },
     "api/**/*.mjs": {
       "maxDuration": 120
     },
     "api/[...path].js": {
-      "maxDuration": 60
+      "maxDuration": 120
     }
   },
   "rewrites": [
+    { "source": "/api/llm/production-plan", "destination": "/api/llm/production-plan.mjs" },
+    { "source": "/api/providers/status", "destination": "/api/providers/status.mjs" },
+    { "source": "/api/voice/elevenlabs/voices", "destination": "/api/voice/elevenlabs/voices.mjs" },
+    { "source": "/api/voice/elevenlabs/preview", "destination": "/api/voice/elevenlabs/preview.mjs" },
+    { "source": "/api/voice/elevenlabs/full-spot", "destination": "/api/voice/elevenlabs/full-spot.mjs" },
+    { "source": "/api/sound/elevenlabs/effect", "destination": "/api/sound/elevenlabs/effect.mjs" },
+    { "source": "/api/music/elevenlabs/compose", "destination": "/api/music/elevenlabs/compose.mjs" },
     { "source": "/health", "destination": "/api/health.mjs" }
   ],
   "headers": [

@@ -7,7 +7,7 @@ export default function handler(req, res) {
     return res.end();
   }
 
-  const anthropicModel = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const anthropicModel = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20241022";
 
   const status = {
     elevenLabs: {

@@ -146,7 +146,7 @@ export const checkAnthropicLive = async (apiKey, model) => {
 };
 
 export const providerStatus = async (env = process.env) => {
-  const anthropicModel = env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const anthropicModel = env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20241022";
   const anthropicLive = await checkAnthropicLive(env.ANTHROPIC_API_KEY, anthropicModel);
   return {
     elevenLabs: {
@@ -669,7 +669,7 @@ const normalizeLlmPlan = (plan) => ({
 
 export const handleLlmProductionPlan = async (request, response, env = process.env, requestOrigin = "") => {
   const apiKey = env.ANTHROPIC_API_KEY;
-  const model = env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const model = env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20241022";
   const body = await readJson(request);
   const input = String(body.input ?? "").trim();
   if (!input) return json(response, 400, { error: "Missing required input." }, requestOrigin);

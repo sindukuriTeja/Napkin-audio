@@ -1,5 +1,9 @@
 import { corsHeaders } from "../_lib/shared.mjs";
 
+export const config = {
+  maxDuration: 120,
+};
+
 const ANTHROPIC_API_BASE = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -85,7 +89,7 @@ export default async function handler(req, res) {
   };
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20241022";
 
   if (!apiKey) {
     return json(401, {
