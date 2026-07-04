@@ -9,13 +9,13 @@ This repo was prepared from the original RA Studio build pack and recreates/impr
 ```bash
 npm install
 npm run dev      # frontend (Vite), usually http://127.0.0.1:5173
-npm run server   # provider proxy (ElevenLabs + Ollama), http://127.0.0.1:8787
+npm run server   # provider proxy (ElevenLabs + Claude), http://127.0.0.1:8787
 npm run demo:check  # verifies provider status redaction, mock voices, RAG data
 npm test         # vitest unit tests
 npm run build    # tsc -b && vite build
 ```
 
-`npm run dev` and `npm run server` run in separate terminals/windows at the same time. On Windows, `start-studio.bat` starts both for you in one click, checks that Ollama is reachable, and runs `npm install` automatically if `node_modules` is missing.
+`npm run dev` and `npm run server` run in separate terminals/windows at the same time. On Windows, `start-studio.bat` starts both for you in one click, checks that `ANTHROPIC_API_KEY` is set, and runs `npm install` automatically if `node_modules` is missing.
 
 For a focused manual QA pass, use [docs/testing-tonight.md](docs/testing-tonight.md).
 
@@ -37,7 +37,7 @@ To put this live for other people to use, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - Deterministic script parser for voice, announcer, character, SFX, music, pause, legal, CTA, and brand mnemonic lines.
 - Runtime estimator, words-per-second calculation, legal speed risk, and duration warnings.
 - Emotion, comedy, timing, performance, sound design, mix, station delivery, QC, and Craft Quality agents.
-- Autonomous full production planning via a local Llama 3 model through Ollama: from a single text input, it drafts the script, voice roles, sound cues, music cues, and a sonic-logo/brand mnemonic.
+- Autonomous full production planning via the Claude API: from a single text input, it drafts the script, voice roles, sound cues, music cues, and a sonic-logo/brand mnemonic.
 - Voice casting panel with mock take generation.
 - Full-spot rendering: concatenates every spoken line into one downloadable MP3 via ElevenLabs, with silence padding between lines.
 - VO Voice Transformer path for approved source recordings, consent confirmation, and ElevenLabs speech-to-speech preview generation.
@@ -95,8 +95,8 @@ Copy `.env.example` to `.env` when you add real provider work:
 VITE_APP_NAME=Napkin Audio AI Studio
 ELEVENLABS_API_KEY=
 ELEVENLABS_DEFAULT_VOICE_ID=
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-sonnet-5
 NVIDIA_RIVA_ENDPOINT=
 NVIDIA_RIVA_API_KEY=
 NVIDIA_NIM_API_KEY=
@@ -104,13 +104,13 @@ PORT=8787
 CORS_ORIGIN=http://127.0.0.1:5173
 ```
 
-Important: the frontend MVP does not call real voice APIs with secrets from the browser. A local provider proxy is available with `npm run server`; it keeps provider keys server-side and can forward live ElevenLabs speech, SFX, music, and source-URL dubbing requests when credentials are configured, plus local Llama 3 production-planning requests through Ollama.
+Important: the frontend MVP does not call real voice APIs with secrets from the browser. A local provider proxy is available with `npm run server`; it keeps provider keys server-side and can forward live ElevenLabs speech, SFX, music, and source-URL dubbing requests when credentials are configured, plus Claude API production-planning requests.
 
 Provider proxy endpoints:
 
 - `GET /health`
 - `GET /api/providers/status`
-- `POST /api/llm/production-plan` (Ollama / Llama 3)
+- `POST /api/llm/production-plan` (Claude)
 - `GET /api/voice/elevenlabs/voices`
 - `POST /api/voice/elevenlabs/preview`
 - `POST /api/voice/elevenlabs/full-spot`
@@ -126,18 +126,17 @@ Provider proxy endpoints:
 
 The app includes an ElevenLabs provider path for `voice_id`, `model_id`, text, output format, settings, pronunciation support, continuity context, source VO voice transformation, sound effect prompts, music prompts, and source-URL dubbing jobs. The proxy can return live audio bytes, and `/api/voice/elevenlabs/full-spot` will concatenate a full set of scripted lines into one downloadable MP3. The frontend still needs durable asset persistence and full mix rendering/mastering before this is a complete production audio workflow. See [docs/elevenlabs-setup.md](docs/elevenlabs-setup.md).
 
-## Local LLM (Ollama)
+## LLM planning (Claude)
 
-The Studio tab can generate a complete production plan (script lines, voice roles, sound cues, music cues, and a sonic-logo/brand mnemonic) from a single text input, autonomously, using a local Llama 3 model served by [Ollama](https://ollama.com).
+The Studio tab can generate a complete production plan (script lines, voice roles, sound cues, music cues, and a sonic-logo/brand mnemonic) from a single text input, autonomously, using the Claude API.
 
 Setup:
 
-1. Install Ollama and pull the model: `ollama pull llama3`.
-2. Make sure Ollama is running (`ollama list` should show `llama3`); it listens on `http://127.0.0.1:11434` by default.
-3. Set `OLLAMA_BASE_URL` and `OLLAMA_MODEL` in `.env` if you use a different host/port or model.
-4. Start the proxy with `npm run server`; it calls Ollama's `/api/chat` endpoint from `POST /api/llm/production-plan`.
+1. Get an API key at [console.anthropic.com](https://console.anthropic.com/settings/keys).
+2. Set `ANTHROPIC_API_KEY` in `.env`. Optionally set `ANTHROPIC_MODEL` (default `claude-sonnet-5`).
+3. Start the proxy with `npm run server`; it calls the Claude Messages API from `POST /api/llm/production-plan`.
 
-This is CPU-friendly but not fast: generations have taken roughly 110-120 seconds on CPU-only hardware in testing, and the proxy allows up to 6 minutes before timing out. If Ollama is not reachable, the proxy returns a clear error and the rest of the app (mock and ElevenLabs voices, manual script entry) keeps working without it. `start-studio.bat` checks Ollama's reachability on launch.
+The proxy allows up to 2 minutes before timing out. If `ANTHROPIC_API_KEY` is missing or the Claude API is unreachable, the proxy returns a clear error and the rest of the app (mock and ElevenLabs voices, manual script entry) keeps working without it. `start-studio.bat` checks that the key is set on launch.
 
 ## NVIDIA Riva / NIM
 
@@ -166,7 +165,7 @@ It does not claim awards performance, guaranteed effectiveness, or automatic bro
 - No full mastering (loudness/true-peak/mastering chain) in v1; full-spot MP3 concatenation and browser Web Audio mixing exist, but there is no server-side rendering/mastering pipeline yet.
 - `.docx` upload is not implemented; paste extracted text or upload `.txt` / `.md`.
 - ElevenLabs live calls require the local provider proxy plus a configured key and plan access; NVIDIA Riva and NIM remain scaffolds.
-- Llama 3 production planning requires a local Ollama install and can be slow (roughly 1-2 minutes) on CPU-only hardware.
+- Full production planning requires a configured `ANTHROPIC_API_KEY` and network access to the Claude API.
 - Loudness, true peak, clipping, file format, head/tail silence, and station compliance checks are placeholders until production audio analysis is added.
 - Station specifications remain unverified and must be confirmed with current station delivery requirements.
 - Studio knowledge retrieval is currently local keyword scoring over seed and imported chunks from the Napkin Audio AI Studio RAG Knowledge Dataset, not a full external vector RAG pipeline.

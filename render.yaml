@@ -12,7 +12,7 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false
-      - key: OLLAMA_BASE_URL
+      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: OLLAMA_MODEL
-        value: llama3
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
