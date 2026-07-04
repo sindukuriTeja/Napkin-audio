@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 const port = Number(process.env.PORT ?? 8787);
 
 const ELEVENLABS_API_BASE = "https://api.elevenlabs.io/v1";
-const OLLAMA_API_BASE = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
+const ANTHROPIC_API_BASE = "https://api.anthropic.com/v1";
+const ANTHROPIC_VERSION = "2023-06-01";
 
 export const mockElevenLabsVoices = [
   {
@@ -113,25 +114,31 @@ export const readJson = async (request) => {
   }
 };
 
-// Live-checks the local Ollama install so the UI can tell the user exactly what's wrong
-// (unreachable vs. wrong model name) instead of them having to run `ollama list` themselves.
-export const checkOllamaLive = async (baseUrl, model) => {
+// Live-checks the configured Claude API key/model so the UI can tell the user exactly
+// what's wrong (missing key vs. bad key vs. unknown model) instead of guessing.
+export const checkAnthropicLive = async (apiKey, model) => {
+  if (!apiKey) {
+    return { reachable: false, modelFound: false, error: "ANTHROPIC_API_KEY is not configured." };
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4000);
   try {
-    const response = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
-    if (!response.ok) return { reachable: false, modelsAvailable: [], modelFound: false, error: `Ollama responded with HTTP ${response.status}.` };
-    const payload = await response.json();
-    const modelsAvailable = Array.isArray(payload?.models) ? payload.models.map((m) => String(m.name ?? m.model ?? "")).filter(Boolean) : [];
-    const modelFound = modelsAvailable.some((name) => name === model || name.startsWith(`${model}:`));
-    return { reachable: true, modelsAvailable, modelFound, error: null };
+    const response = await fetch(`${ANTHROPIC_API_BASE}/models/${encodeURIComponent(model)}`, {
+      headers: { "x-api-key": apiKey, "anthropic-version": ANTHROPIC_VERSION },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      const modelFound = response.status !== 404;
+      return { reachable: response.status !== 401 && response.status !== 403, modelFound, error: `Claude API responded with HTTP ${response.status}: ${detail.slice(0, 200)}` };
+    }
+    return { reachable: true, modelFound: true, error: null };
   } catch (error) {
     const isAbort = error instanceof Error && error.name === "AbortError";
     return {
       reachable: false,
-      modelsAvailable: [],
       modelFound: false,
-      error: isAbort ? "Ollama did not respond to a connection check within 4s." : `Could not reach Ollama: ${error instanceof Error ? error.message : "unknown error"}`,
+      error: isAbort ? "Claude API did not respond to a connection check within 4s." : `Could not reach the Claude API: ${error instanceof Error ? error.message : "unknown error"}`,
     };
   } finally {
     clearTimeout(timeout);
@@ -139,9 +146,8 @@ export const checkOllamaLive = async (baseUrl, model) => {
 };
 
 export const providerStatus = async (env = process.env) => {
-  const ollamaBaseUrl = env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-  const ollamaModel = env.OLLAMA_MODEL || "llama3";
-  const ollamaLive = await checkOllamaLive(ollamaBaseUrl, ollamaModel);
+  const anthropicModel = env.ANTHROPIC_MODEL || "claude-sonnet-5";
+  const anthropicLive = await checkAnthropicLive(env.ANTHROPIC_API_KEY, anthropicModel);
   return {
     elevenLabs: {
       configured: Boolean(env.ELEVENLABS_API_KEY),
@@ -161,14 +167,12 @@ export const providerStatus = async (env = process.env) => {
     nvidiaNim: {
       configured: Boolean(env.NVIDIA_NIM_API_KEY),
     },
-    ollama: {
-      configured: true,
-      model: ollamaModel,
-      baseUrl: ollamaBaseUrl,
-      reachable: ollamaLive.reachable,
-      modelFound: ollamaLive.modelFound,
-      modelsAvailable: ollamaLive.modelsAvailable,
-      error: ollamaLive.error,
+    claude: {
+      configured: Boolean(env.ANTHROPIC_API_KEY),
+      model: anthropicModel,
+      reachable: anthropicLive.reachable,
+      modelFound: anthropicLive.modelFound,
+      error: anthropicLive.error,
       capabilities: {
         scriptPlanning: true,
         voiceCasting: true,
@@ -587,15 +591,70 @@ const llmSystemPrompt = "You are a senior radio/audio creative director and soun
   "- Music prompts must specify genre, mood, instruments, tempo, and energy level. " +
   "- Script should have natural pauses, emotional shifts, and clear performance direction. " +
   "- Each voice role must be distinct and well-characterized. " +
+  "- CRITICAL JSON FORMATTING: output must be a single valid JSON object and nothing else. Never place a literal \" character inside a string value (for emphasis, nicknames, or quoted dialogue-within-dialogue) — use single quotes ' instead, or omit the punctuation entirely. Never use a literal newline inside a string value. " +
   "JSON shape: {\"title\":\"string\",\"scriptLines\":[{\"speaker\":\"ANNOUNCER|VO1|VO2|CHARACTER_NAME|SFX|MUSIC|SONIC_LOGO\",\"type\":\"voiceover|announcer|character|dialogue|sound-effect|music|pause|legal|cta|brand-mnemonic|note\",\"text\":\"string\",\"performanceNote\":\"string\",\"assignedVoiceRoleName\":\"string optional\"}],\"voiceRoles\":[{\"roleName\":\"string\",\"characterDescription\":\"string\",\"ageRange\":\"string\",\"accent\":\"string\",\"emotionalStyle\":\"string\",\"pace\":\"slow|measured|conversational|quick|fast-read\",\"performanceNotes\":\"string\",\"pronunciationNotes\":\"string\",\"elevenLabsSearchQuery\":\"string\"}],\"soundCues\":[{\"lineNumber\":1,\"label\":\"string\",\"location\":\"string\",\"texture\":\"string\",\"sfxMoment\":\"detailed ElevenLabs sound generation prompt\",\"foley\":\"string\",\"startTime\":0,\"endTime\":2,\"notes\":\"string\"}],\"musicCues\":[{\"label\":\"string\",\"style\":\"string\",\"tempo\":\"string\",\"instrumentation\":\"string\",\"mood\":\"string\",\"startTime\":0,\"endTime\":30,\"notes\":\"string\",\"elevenLabsMusicPrompt\":\"full descriptive prompt for ElevenLabs music generation\"}],\"mixNotes\":\"string\"}";
 
+// Claude (like most LLMs) is asked for raw JSON but will sometimes emit a literal, unescaped
+// newline/tab inside a string value (e.g. a multi-line performance note) instead of the required
+// "\n"/"\t" escape sequence. A single stray raw newline inside a JSON string is enough to break
+// JSON.parse with a confusing "Expected ',' or ']'" error far past the actual problem. This walks
+// the text char-by-char, tracking whether we're inside a quoted string (respecting backslash
+// escapes), and escapes any raw control characters it finds there before parsing.
+const sanitizeJsonText = (text) => {
+  let result = "";
+  let inString = false;
+  let escapeNext = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (!inString) {
+      if (ch === '"') inString = true;
+      result += ch;
+      continue;
+    }
+    if (escapeNext) {
+      result += ch;
+      escapeNext = false;
+      continue;
+    }
+    if (ch === "\\") {
+      result += ch;
+      escapeNext = true;
+      continue;
+    }
+    if (ch === '"') {
+      // Decide whether this quote legitimately closes the string, or is a stray literal quote
+      // inside the content (models often quote a word for emphasis — e.g. a "cozy" nook — without
+      // escaping it). Look ahead past whitespace: a real closing quote is followed by a structural
+      // character (, } ] :) or the end of the text. Anything else means the model meant this as a
+      // literal quote mark inside the string, so escape it instead of prematurely ending the string.
+      let j = i + 1;
+      while (j < text.length && /\s/.test(text[j])) j += 1;
+      const next = text[j];
+      const closesString = next === undefined || ",}]:".includes(next);
+      if (closesString) {
+        inString = false;
+        result += ch;
+      } else {
+        result += '\\"';
+      }
+      continue;
+    }
+    if (ch === "\n") { result += "\\n"; continue; }
+    if (ch === "\r") { result += "\\r"; continue; }
+    if (ch === "\t") { result += "\\t"; continue; }
+    result += ch;
+  }
+  return result;
+};
+
 const extractJsonObject = (value) => {
-  const text = String(value ?? "").trim();
+  const raw = String(value ?? "").trim();
+  const text = sanitizeJsonText(raw);
   try { return JSON.parse(text); } catch {
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
-    throw new Error("Ollama response did not contain a JSON object.");
+    throw new Error("Claude response did not contain a JSON object.");
   }
 };
 
@@ -609,12 +668,18 @@ const normalizeLlmPlan = (plan) => ({
 });
 
 export const handleLlmProductionPlan = async (request, response, env = process.env, requestOrigin = "") => {
-  const ollamaBase = env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-  const model = env.OLLAMA_MODEL || "llama3";
+  const apiKey = env.ANTHROPIC_API_KEY;
+  const model = env.ANTHROPIC_MODEL || "claude-sonnet-5";
   const body = await readJson(request);
   const input = String(body.input ?? "").trim();
   if (!input) return json(response, 400, { error: "Missing required input." }, requestOrigin);
   if (input.length > 6000) return json(response, 400, { error: "Input is too long. Keep the brief under 6000 characters." }, requestOrigin);
+  if (!apiKey) {
+    return json(response, 401, {
+      error: "ANTHROPIC_API_KEY is not configured.",
+      fallback: "Add ANTHROPIC_API_KEY to .env and restart npm run server.",
+    }, requestOrigin);
+  }
   const brief = body.brief && typeof body.brief === "object" ? body.brief : {};
   const targetDuration = Number(body.targetDuration ?? brief.targetDuration ?? 30);
   const voiceCatalog = Array.isArray(body.voiceCatalog) ? body.voiceCatalog.slice(0, 80) : [];
@@ -635,50 +700,77 @@ export const handleLlmProductionPlan = async (request, response, env = process.e
       "Include performance notes for every spoken line — emotion, pace, delivery style.",
     ]
   });
-  const ollamaTimeoutMs = 6 * 60 * 1000; // Observed successful generations taking ~110-120s on CPU-only hardware; give real margin above that.
+  const anthropicTimeoutMs = 2 * 60 * 1000; // Claude responds far faster than a CPU-bound local model, but keep real headroom.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ollamaTimeoutMs);
+  const timeout = setTimeout(() => controller.abort(), anthropicTimeoutMs);
   try {
-    console.log(`[llm] Sending production-plan request to Ollama at ${ollamaBase} (model: ${model})...`);
+    console.log(`[llm] Sending production-plan request to Claude (model: ${model})...`);
     const startedAt = Date.now();
-    const providerResponse = await fetch(`${ollamaBase}/api/chat`, {
+    const providerResponse = await fetch(`${ANTHROPIC_API_BASE}/messages`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
+      },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: "system", content: llmSystemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: false,
-        // num_predict trimmed from 4096: a 30-60s ad plan rarely needs more than ~1600 tokens, and every
-        // unused token in the ceiling is time spent generating. format:"json" (grammar-constrained decoding)
-        // was removed because it can slow local models down by 10x+ per token on CPU-only hardware; the
-        // system prompt already demands raw JSON, and extractJsonObject() below has a tolerant fallback parser.
-        options: { temperature: 0.7, num_predict: 1600 },
+        // A full plan (script lines + voice roles + sound cues + music cues + mix notes) can run
+        // long; too low a ceiling here truncates the JSON mid-array and normalizeLlmPlan below fails
+        // to parse it. Claude's failure mode on hitting this ceiling is a clean stop_reason:"max_tokens"
+        // (logged below), not a hang, so it's safe to set this generously.
+        max_tokens: 16000,
+        system: llmSystemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
       }),
       signal: controller.signal,
     });
-    console.log(`[llm] Ollama responded with status ${providerResponse.status} after ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+    console.log(`[llm] Claude responded with status ${providerResponse.status} after ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
     if (!providerResponse.ok) {
       const detail = await providerResponse.text();
-      return json(response, providerResponse.status, { error: "Ollama Llama 3 production planning failed.", detail }, requestOrigin);
+      console.log(`[llm] Claude error detail: ${detail.slice(0, 500)}`);
+      return json(response, providerResponse.status, { error: "Claude production planning failed.", detail }, requestOrigin);
     }
     const payload = await providerResponse.json();
-    const text = payload?.message?.content ?? "";
+    const text = Array.isArray(payload?.content)
+      ? payload.content.map((block) => (block?.type === "text" ? String(block.text ?? "") : "")).join("")
+      : "";
+    console.log(`[llm] Claude stop_reason=${payload?.stop_reason}, text length=${text.length}`);
+    if (payload?.stop_reason === "max_tokens") {
+      console.log(`[llm] Response was truncated at the max_tokens ceiling — attempting partial salvage.`);
+      // Try to salvage whatever JSON was returned before the cut-off.
+      // extractJsonObject closes up to the last "}" so partial arrays get dropped
+      // but the top-level object and any completed arrays are still usable.
+      try {
+        const salvaged = normalizeLlmPlan(extractJsonObject(text));
+        if (salvaged.scriptLines.length > 0) {
+          console.log(`[llm] Partial salvage succeeded: ${salvaged.scriptLines.length} script lines, ${salvaged.soundCues.length} sound cues.`);
+          return json(response, 200, salvaged, requestOrigin);
+        }
+      } catch (salvageError) {
+        console.log(`[llm] Partial salvage failed: ${salvageError instanceof Error ? salvageError.message : salvageError}`);
+      }
+      return json(response, 502, {
+        error: "Claude's response was cut off before it finished (hit the output length limit).",
+        detail: "Try a shorter, more focused description, or fewer required elements, and generate again.",
+      }, requestOrigin);
+    }
     try { return json(response, 200, normalizeLlmPlan(extractJsonObject(text)), requestOrigin); } catch (error) {
-      return json(response, 502, { error: "Could not parse Ollama Llama 3 production plan JSON.", detail: error instanceof Error ? error.message : "Unknown parse error", raw: text.slice(0, 1200) }, requestOrigin);
+      console.log(`[llm] JSON parse failed: ${error instanceof Error ? error.message : "Unknown parse error"}`);
+      console.log(`[llm] Raw text (first 2000 chars): ${text.slice(0, 2000)}`);
+      console.log(`[llm] Raw text (last 500 chars): ${text.slice(-500)}`);
+      return json(response, 502, { error: "Could not parse Claude production plan JSON.", detail: error instanceof Error ? error.message : "Unknown parse error", raw: text.slice(0, 1200) }, requestOrigin);
     }
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      console.log(`[llm] Ollama request timed out after ${ollamaTimeoutMs / 1000}s.`);
+      console.log(`[llm] Claude request timed out after ${anthropicTimeoutMs / 1000}s.`);
       return json(response, 504, {
-        error: `Ollama did not respond within ${ollamaTimeoutMs / 1000}s.`,
-        detail: "The model may still be loading into memory on first use, or this machine is too slow to generate a full production plan quickly. Try running 'ollama run llama3 \"hello\"' directly in a terminal to see how fast this machine generates tokens.",
+        error: `Claude did not respond within ${anthropicTimeoutMs / 1000}s.`,
+        detail: "Try again, or try a shorter description.",
       }, requestOrigin);
     }
-    console.log(`[llm] Could not reach Ollama: ${error instanceof Error ? error.message : error}`);
-    return json(response, 502, { error: "Could not connect to Ollama. Make sure Ollama is running with Llama 3 loaded.", detail: error instanceof Error ? error.message : "Connection refused" }, requestOrigin);
+    console.log(`[llm] Could not reach the Claude API: ${error instanceof Error ? error.message : error}`);
+    return json(response, 502, { error: "Could not connect to the Claude API. Check ANTHROPIC_API_KEY and your network connection.", detail: error instanceof Error ? error.message : "Connection refused" }, requestOrigin);
   } finally {
     clearTimeout(timeout);
   }

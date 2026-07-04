@@ -134,6 +134,22 @@
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
+/* Respect the OS-level motion preference: entry animations, hover lifts,
+   the button shine sweep, timeline scanline, and theme-switch transitions
+   all collapse to effectively instant. The particle field and waveform
+   scrubber separately check this in JS since they're canvas-driven, not
+   CSS-driven. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -381,6 +397,49 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2355604f' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
 }
 
+/* Floating-label fields — shared by TextField/TextArea. The label sits
+   inside the field at rest (like a placeholder) and floats up into the
+   row gap above the field once it has focus or a value. */
+.floating-field {
+  position: relative;
+  margin-top: 0.6rem;
+}
+
+.floating-field input,
+.floating-field textarea {
+  width: 100%;
+}
+
+.floating-field .floating-label {
+  position: absolute;
+  left: 0.9rem;
+  top: 0.8rem;
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  pointer-events: none;
+  transition: top 0.2s cubic-bezier(0.4, 0, 0.2, 1), font-size 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    font-weight 0.2s ease, color 0.2s ease, letter-spacing 0.2s ease;
+}
+
+.floating-field input:focus + .floating-label,
+.floating-field input:not(:placeholder-shown) + .floating-label,
+.floating-field textarea:focus + .floating-label,
+.floating-field textarea:not(:placeholder-shown) + .floating-label {
+  top: -0.85rem;
+  left: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+}
+
 label {
   display: grid;
   gap: 0.5rem;
@@ -388,6 +447,16 @@ label {
   font-size: 0.85rem;
   font-weight: 550;
   letter-spacing: 0.02em;
+}
+
+/* Ambient particle field — sits behind everything, never intercepts clicks */
+.particle-field {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* App Layout: sidebar + main column */
@@ -401,13 +470,13 @@ label {
   max-width: 100vw;
 }
 
-/* Left Sidebar Navigation — pinned to the viewport. Height (not
-   min-height) plus overflow on the nav list keeps the Preview transport
-   at the bottom always in view, even when there are more nav items than
-   fit on a shorter screen; only the nav list scrolls internally. */
+/* Left Sidebar Navigation — fixed to the viewport so it never scrolls
+   with page content. The main column gets a matching left margin so
+   content isn't hidden behind it. */
 .sidebar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   flex: 0 0 240px;
   width: 240px;
   height: 100vh;
@@ -418,6 +487,12 @@ label {
   background: var(--panel-solid);
   border-right: 1px solid var(--line);
   overflow: hidden;
+  z-index: 10;
+}
+
+/* Push main content right so it isn't hidden behind the fixed sidebar */
+.main-col {
+  margin-left: 240px;
 }
 
 .sidebar-nav {
@@ -451,8 +526,9 @@ label {
   font-family: 'Instrument Serif', serif;
   font-style: italic;
   font-weight: 400;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   letter-spacing: 0.01em;
+  text-shadow: 0 0 20px rgba(183, 194, 176, 0.3);
 }
 
 .sidebar-brand small {
@@ -484,13 +560,14 @@ label {
 }
 
 .sidebar-section button {
+  position: relative;
   justify-content: flex-start;
   border: 0;
   background: transparent;
   color: var(--muted);
   font-weight: 600;
   font-size: 0.88rem;
-  padding: 0.55rem 0.6rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.85rem;
   border-radius: 6px;
   box-shadow: none;
 }
@@ -504,6 +581,17 @@ label {
   color: var(--text);
   background: var(--overlay-strong);
   box-shadow: none;
+}
+
+.sidebar-section button.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--accent-2);
+  border-radius: 2px;
 }
 
 /* Sidebar Preview Player */
@@ -536,21 +624,26 @@ label {
   font-size: 0.8rem;
 }
 
-.preview-scrub {
-  height: 8px;
+.waveform-scrubber {
+  height: 40px;
   padding: 0;
-  overflow: hidden;
   background: var(--surface-3);
   border: 1px solid var(--line);
   border-radius: 6px;
   cursor: pointer;
   width: 100%;
+  user-select: none;
 }
 
-.preview-scrub span {
+.waveform-scrubber:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.waveform-scrubber canvas {
   display: block;
+  width: 100%;
   height: 100%;
-  background: var(--accent);
 }
 
 .preview-controls {
@@ -572,13 +665,13 @@ label {
   white-space: nowrap;
 }
 
-/* Main Column */
+/* Main Column — offset by sidebar width so content is never hidden behind the fixed sidebar */
 .main-col {
   flex: 1;
   min-width: 0;
-  width: 100%;
-  max-width: 1560px;
-  margin: 0 auto;
+  width: calc(100% - 240px);
+  max-width: calc(1560px - 240px);
+  margin-left: 240px;
   padding: 1.25rem 1.5rem 3rem;
 }
 
@@ -1529,10 +1622,34 @@ audio {
   gap: 0.9rem;
 }
 
-/* Responsive Overrides */
-/* Below 1280px there isn't room for a third sticky column, so the AI
-   Director reflows to a full-width panel under the main content instead
-   of disappearing — it stays reachable on laptop-sized screens. */
+/* ============================================================
+   RESPONSIVE — Mobile-first breakpoints
+   ============================================================ */
+
+/* --- Overlay that dims content when the sidebar drawer is open --- */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Sidebar close button — hidden on desktop */
+.sidebar-close {
+  display: none;
+  align-self: flex-end;
+  margin-bottom: 0.25rem;
+}
+
+/* Hamburger button — hidden on desktop */
+.hamburger-button {
+  display: none;
+}
+
+/* --- ≤ 1280px: AI Director reflows below main content --- */
 @media (max-width: 1280px) {
   .workspace {
     flex-wrap: wrap;
@@ -1546,6 +1663,7 @@ audio {
   }
 }
 
+/* --- ≤ 1120px: two-column grids collapse --- */
 @media (max-width: 1120px) {
   .studio-grid,
   .script-layout,
@@ -1561,63 +1679,153 @@ audio {
 
   .metric-row,
   .quick-card-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .topbar-actions {
     justify-content: flex-start;
     max-width: none;
   }
+
+  .script-input {
+    min-height: 420px;
+  }
 }
 
+/* --- ≤ 900px: sidebar becomes a slide-in drawer --- */
 @media (max-width: 900px) {
   .app-layout {
     flex-direction: column;
   }
 
+  /* Hamburger visible */
+  .hamburger-button {
+    display: inline-flex;
+    margin-right: 0.25rem;
+  }
+
+  /* Sidebar is fixed off-screen left */
   .sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    overflow: visible;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 100;
+    width: 260px;
+    height: 100%;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+
+  /* Sidebar open state */
+  .app-layout.sidebar-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 40px rgba(0, 0, 0, 0.5);
+  }
+
+  .app-layout.sidebar-open .sidebar-overlay {
+    display: block;
+  }
+
+  /* Close button visible on mobile */
+  .sidebar-close {
+    display: inline-flex;
   }
 
   .sidebar-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow: visible;
-    min-height: auto;
+    overflow-y: auto;
+    flex: 1;
   }
 
-  .sidebar-section {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .sidebar-preview {
-    margin-top: 0;
-    flex: 1 1 240px;
-  }
-
+  /* Main column takes full width */
   .main-col {
-    padding: 1rem;
-  }
-}
-
-@media (max-width: 680px) {
-  .topbar {
-    padding: 1rem;  }
-
-  .topbar-title h1 {
-    font-size: 1.15rem;
+    width: 100%;
+    margin-left: 0;
+    padding: 0.85rem 1rem 3rem;
   }
 
   .metric-row,
   .quick-card-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Topbar: allow wrapping on small screens */
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .topbar-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* --- ≤ 680px: single column, touch-friendly --- */
+@media (max-width: 680px) {
+  .topbar {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .topbar-title h1 {
+    font-size: 1.1rem;
+  }
+
+  .topbar-title input {
+    font-size: 1.1rem;
+    max-width: 200px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Reduce button text on very small screens */
+  .topbar-actions .segmented {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar-actions .segmented button {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .metric-row,
+  .quick-card-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .studio-grid,
+  .script-layout,
+  .form-grid,
+  .card-grid,
+  .slider-grid,
+  .voice-fields,
+  .export-targets,
+  .readiness-list {
     grid-template-columns: 1fr;
+  }
+
+  .line-controls {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .line-controls > *:last-child,
+  .line-controls > *:nth-last-child(2) {
+    grid-column: span 1;
+  }
+
+  .script-input {
+    min-height: 300px;
+    font-size: 0.9rem;
   }
 
   .upload-row,
@@ -1632,6 +1840,88 @@ audio {
   .export-buttons button,
   .tool-stack button {
     width: 100%;
+    justify-content: center;
+  }
+
+  /* Bigger touch targets for buttons */
+  button,
+  .file-button {
+    min-height: 40px;
+  }
+
+  .preview-controls button {
+    min-height: 36px;
+  }
+
+  /* Stack section headers on narrow screens */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .suggestion-actions {
+    flex-direction: column;
+  }
+
+  .suggestion-actions button {
+    width: 100%;
+  }
+
+  /* Timeline min height */
+  .timeline {
+    min-height: 200px;
+  }
+
+  /* Tab context line wraps gracefully */
+  .tab-context {
+    font-size: 0.82rem;
+  }
+
+  /* LLM planner stacks naturally */
+  .llm-planner textarea {
+    min-height: 90px;
+  }
+
+  /* Panel padding tighter */
+  .panel,
+  .metric {
+    padding: 1rem;
+  }
+
+  /* Sidebar width full on very small */
+  .sidebar {
+    width: 100%;
+  }
+}
+
+/* --- ≤ 420px: extra small tweaks --- */
+@media (max-width: 420px) {
+  .main-col {
+    padding: 0.6rem 0.75rem 3rem;
+  }
+
+  .metric-row,
+  .quick-card-row {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-tile strong {
+    font-size: 1.2rem;
+  }
+
+  .topbar-title h1 {
+    font-size: 1rem;
+  }
+
+  .sidebar-brand strong {
+    font-size: 1.2rem;
+  }
+
+  button,
+  .file-button {
+    min-height: 44px;
+    font-size: 0.85rem;
   }
 }
 

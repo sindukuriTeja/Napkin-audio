@@ -17,13 +17,11 @@ export interface ProviderStatus {
   nvidiaNim: {
     configured: boolean;
   };
-  ollama?: {
+  claude?: {
     configured: boolean;
     model: string;
-    baseUrl: string;
     reachable?: boolean;
     modelFound?: boolean;
-    modelsAvailable?: string[];
     error?: string | null;
     capabilities?: {
       scriptPlanning: boolean;
@@ -137,7 +135,7 @@ export interface LlmProductionPlanRequest {
 
 export const generateLlmProductionPlan = async (input: LlmProductionPlanRequest): Promise<LlmProductionPlan> => {
   const controller = new AbortController();
-  const timeoutMs = 6.5 * 60 * 1000; // Kept just above the backend's own Ollama timeout so the backend's clearer error wins the race.
+  const timeoutMs = 2.5 * 60 * 1000; // Kept just above the backend's own Claude API timeout so the backend's clearer error wins the race.
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${providerProxyBaseUrl}/api/llm/production-plan`, {
@@ -153,7 +151,7 @@ export const generateLlmProductionPlan = async (input: LlmProductionPlanRequest)
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(
-        `Ollama did not respond within ${timeoutMs / 1000}s. It may still be loading Llama 3 into memory, or generating on slow hardware — check the "npm run server" terminal window for progress, or try a shorter description.`,
+        `Claude did not respond within ${timeoutMs / 1000}s. Check the "npm run server" terminal window for progress, or try a shorter description.`,
       );
     }
     throw error;
@@ -178,7 +176,14 @@ const providerErrorMessage = async (response: Response) => {
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     const payload = await response.json();
-    if (payload && typeof payload === "object" && "error" in payload) return String(payload.error);
+    if (payload && typeof payload === "object" && "error" in payload) {
+      const base = String(payload.error);
+      if ("detail" in payload && payload.detail) {
+        const detail = typeof payload.detail === "string" ? payload.detail : JSON.stringify(payload.detail);
+        return `${base} ${detail}`.slice(0, 600);
+      }
+      return base;
+    }
   }
   const detail = await response.text();
   return detail || `Provider proxy returned ${response.status}`;
@@ -331,4 +336,3 @@ export const fetchElevenLabsDubbingAudio = async (dubbingId: string, targetLang:
   }
   return response.blob();
 };
-
