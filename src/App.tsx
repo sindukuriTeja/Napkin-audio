@@ -1505,18 +1505,33 @@ export function App() {
       const cue = newSoundCues[i];
       setGenerateAllAndMixMessage(`Generating sound effect ${i + 1} of ${newSoundCues.length}: ${cue.label}…`);
       try {
-        const duration = Math.max(0.5, Math.min(30, cue.endTime - cue.startTime));
+        // Only pass durationSeconds if the cue has meaningful timing (>= 1s).
+        // When startTime/endTime are both 0 (untimed script), omitting duration lets
+        // ElevenLabs pick the natural length for the prompt instead of generating
+        // an artificially short clip that sounds wrong or gets rejected.
+        const cueDuration = cue.endTime - cue.startTime;
+        const durationSeconds = cueDuration >= 1 ? Math.max(2, Math.min(22, cueDuration)) : undefined;
         const blob = await generateElevenLabsSoundEffect({
           text: cue.sfxMoment || cue.label,
-          durationSeconds: duration,
-          promptInfluence: 0.3,
+          durationSeconds,
+          promptInfluence: 0.4,
           modelId: sfxModel,
         });
         cue.audioUrl = URL.createObjectURL(blob);
       } catch (error) {
-        const fallbackReason = error instanceof Error ? error.message : "Provider unconfigured";
-        cue.audioUrl = URL.createObjectURL(generateMockVoicePreviewBlob(`Sound Effect: ${cue.label}`));
-        cue.notes = `${cue.notes || ""} [Mock Audio Fallback: ${fallbackReason}]`;
+        // Retry once without durationSeconds — some prompts fail with an explicit duration
+        try {
+          const blob = await generateElevenLabsSoundEffect({
+            text: cue.sfxMoment || cue.label,
+            promptInfluence: 0.4,
+            modelId: sfxModel,
+          });
+          cue.audioUrl = URL.createObjectURL(blob);
+        } catch (retryError) {
+          const fallbackReason = retryError instanceof Error ? retryError.message : "Provider unconfigured";
+          cue.audioUrl = URL.createObjectURL(generateMockVoicePreviewBlob(`Sound Effect: ${cue.label}`));
+          cue.notes = `${cue.notes || ""} [Mock Audio Fallback: ${fallbackReason}]`;
+        }
       }
     }
 
@@ -1719,24 +1734,39 @@ export function App() {
     setGeneratingSfxCueId(cueId);
     setSoundDesignMessage(`Generating SFX for: ${cue.label}...`);
     try {
-      const duration = Math.max(0.5, Math.min(30, cue.endTime - cue.startTime));
+      // Only pass durationSeconds when timing is meaningful (>= 1s gap).
+      // Zero/untimed cues (startTime=endTime=0) should let ElevenLabs pick natural length.
+      const cueDuration = cue.endTime - cue.startTime;
+      const durationSeconds = cueDuration >= 1 ? Math.max(2, Math.min(22, cueDuration)) : undefined;
       const blob = await generateElevenLabsSoundEffect({
         text: cue.sfxMoment || cue.label,
-        durationSeconds: duration,
-        promptInfluence: 0.3,
+        durationSeconds,
+        promptInfluence: 0.4,
         modelId: sfxModel,
       });
       const audioUrl = URL.createObjectURL(blob);
       updateSoundCue(cueId, { audioUrl });
       setSoundDesignMessage(`✓ Generated sound effect: ${cue.label}`);
     } catch (error) {
-      const fallbackReason = error instanceof Error ? error.message : "Provider unconfigured";
-      const audioUrl = URL.createObjectURL(generateMockVoicePreviewBlob(`Sound Effect: ${cue.label}`));
-      updateSoundCue(cueId, {
-        audioUrl,
-        notes: `${cue.notes || ""} [Mock Audio Fallback: ${fallbackReason}]`,
-      });
-      setSoundDesignMessage(`Fallback: Generated mock placeholder for ${cue.label}`);
+      // Retry once without durationSeconds constraint
+      try {
+        const blob = await generateElevenLabsSoundEffect({
+          text: cue.sfxMoment || cue.label,
+          promptInfluence: 0.4,
+          modelId: sfxModel,
+        });
+        const audioUrl = URL.createObjectURL(blob);
+        updateSoundCue(cueId, { audioUrl });
+        setSoundDesignMessage(`✓ Generated sound effect (retry): ${cue.label}`);
+      } catch (retryError) {
+        const fallbackReason = retryError instanceof Error ? retryError.message : "Provider unconfigured";
+        const audioUrl = URL.createObjectURL(generateMockVoicePreviewBlob(`Sound Effect: ${cue.label}`));
+        updateSoundCue(cueId, {
+          audioUrl,
+          notes: `${cue.notes || ""} [Mock Audio Fallback: ${fallbackReason}]`,
+        });
+        setSoundDesignMessage(`Fallback: Generated mock placeholder for ${cue.label}`);
+      }
     } finally {
       setGeneratingSfxCueId(null);
     }
