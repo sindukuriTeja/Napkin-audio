@@ -7,6 +7,8 @@ export default function handler(req, res) {
     return res.end();
   }
 
+  const anthropicModel = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
+
   const status = {
     elevenLabs: {
       configured: Boolean(process.env.ELEVENLABS_API_KEY),
@@ -26,18 +28,13 @@ export default function handler(req, res) {
     nvidiaNim: {
       configured: Boolean(process.env.NVIDIA_NIM_API_KEY),
     },
-    ollama: {
-      configured: false,
-      model: "llama3",
-      baseUrl: "",
-      reachable: false,
-      modelFound: false,
-      modelsAvailable: [],
-      error: "Ollama is not available in serverless deployments.",
+    claude: {
+      configured: Boolean(process.env.ANTHROPIC_API_KEY),
+      model: anthropicModel,
       capabilities: {
-        scriptPlanning: false,
-        voiceCasting: false,
-        soundDesign: false,
+        scriptPlanning: true,
+        voiceCasting: true,
+        soundDesign: true,
       },
     },
   };
