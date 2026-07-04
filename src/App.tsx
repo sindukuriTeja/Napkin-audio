@@ -1263,12 +1263,12 @@ export function App() {
       });
 
       // Canvas length = actual voice length only. Music/SFX are clamped to this.
-      // Never use music/SFX buffer duration to drive canvas length — a 60s music
-      // bed would add 30s of silence after a 30s voice track.
       const lastVoiceEnd = voiceCursor;
       const duration = Math.max(lastVoiceEnd, 1);
-      // Use the actual decoded sample rate, not a hardcoded assumption
-      const sampleRate = validAssets[0].buffer.sampleRate;
+      // Always render at 44100 Hz. Web Audio resamples buffers automatically when
+      // their native rate differs from the context rate, so voice decoded at 44100
+      // and music decoded at 22050 both play correctly in the same context.
+      const sampleRate = 44100;
       const offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * duration), sampleRate);
 
       const dbToGain = (db: number) => Math.pow(10, db / 20);
