@@ -1210,12 +1210,12 @@ export function App() {
     }
 
     try {
-      const sampleRate = 44100;
-
-      // Decode using a minimal throwaway context first. AudioBuffers aren't tied to a particular
-      // context, so we can size the REAL rendering context afterward based on actual decoded
-      // lengths, instead of guessing a duration before we know how long anything really is.
-      const decodeCtx = new OfflineAudioContext(2, 1, sampleRate);
+      // Decode using a real AudioContext — NOT OfflineAudioContext(2,1,sampleRate).
+      // An OfflineAudioContext with length=1 throws NotSupportedError in Chrome/Safari
+      // for MP3 blobs, causing every asset to silently fail and the mix to be pure silence.
+      // AudioBuffers are transferable and work fine in any OfflineAudioContext afterward.
+      const AudioCtxCtor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const decodeCtx = new AudioCtxCtor();
       const fetchAndDecode = async (url: string): Promise<AudioBuffer> => {
         const response = await fetch(url);
         const arrayBuffer = await response.arrayBuffer();
@@ -1234,6 +1234,9 @@ export function App() {
           }
         })
       );
+
+      // Close the decode context — we only needed it for decoding
+      try { decodeCtx.close(); } catch { /* already closed */ }
 
       const validAssets = decodedAssets.filter((a): a is NonNullable<typeof a> => a !== null);
       if (validAssets.length === 0) {
@@ -1270,6 +1273,8 @@ export function App() {
         .filter((asset) => asset.type !== "voice")
         .reduce((max, asset) => Math.max(max, asset.startTime + asset.buffer.duration), 0);
       const duration = Math.max(lastVoiceEnd, lastSfxMusicEnd, 1) + 0.5;
+      // Use the actual decoded sample rate, not a hardcoded assumption
+      const sampleRate = validAssets[0].buffer.sampleRate;
       const offlineCtx = new OfflineAudioContext(2, Math.ceil(sampleRate * duration), sampleRate);
 
       const dbToGain = (db: number) => Math.pow(10, db / 20);
@@ -1316,8 +1321,18 @@ export function App() {
 
       setMixRenderingMessage("Mixing audio tracks...");
       finalAssets.forEach((asset) => {
+        const start = Math.max(0, asset.startTime);
+        const naturalEnd = start + asset.buffer.duration;
+        // Loop music/SFX that are shorter than the full mix so there's no silence tail
+        const needsLoop = asset.type !== "voice" && naturalEnd < duration - 0.5;
+
         const source = offlineCtx.createBufferSource();
         source.buffer = asset.buffer;
+        if (needsLoop) {
+          source.loop = true;
+          source.loopStart = 0;
+          source.loopEnd = asset.buffer.duration;
+        }
 
         if (asset.type === "voice" && asset.pitch) {
           if (asset.pitch === "low") {
@@ -1338,24 +1353,22 @@ export function App() {
         }
 
         const gainNode = offlineCtx.createGain();
-        const start = Math.max(0, asset.startTime);
-        // Always let the source play its full decoded length — don't use planned endTime
-        // to stop it early. The planned endTime is a script estimate, not the real audio length.
-        const naturalEnd = start + asset.buffer.duration;
+        const stopAt = needsLoop ? duration : naturalEnd;
 
         if (asset.type === "voice") {
           gainNode.gain.value = voiceGainVal;
         } else if (asset.type === "sfx") {
-          applyDuckingEnvelope(gainNode, start, naturalEnd, sfxGainVal);
+          applyDuckingEnvelope(gainNode, start, stopAt, sfxGainVal);
         } else if (asset.type === "music") {
-          applyDuckingEnvelope(gainNode, start, naturalEnd, musicGainVal);
+          applyDuckingEnvelope(gainNode, start, stopAt, musicGainVal);
         }
 
         finalNode.connect(gainNode);
         gainNode.connect(offlineCtx.destination);
 
         source.start(start);
-        // Let the source play its full natural length — no early stop.
+        // Stop looping sources at end of mix; non-looping sources stop naturally
+        if (needsLoop) source.stop(stopAt);
       });
 
       setMixRenderingMessage("Rendering final stereo mix...");
