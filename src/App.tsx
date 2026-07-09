@@ -456,13 +456,14 @@ export function App() {
           roleName: role.roleName || `Voice ${index + 1}`,
           characterDescription: role.characterDescription || "AI selected radio voice",
           ageRange: role.ageRange || "Adult",
-          accent: role.accent || parsedProject.brief.accentPreference || "neutral",
+          accent: role.accent || parsedProject.brief.accentPreference || "Irish",
           emotionalStyle: role.emotionalStyle || parsedProject.brief.tone || "clear",
           pace: role.pace || "conversational",
           performanceNotes: role.performanceNotes || "Natural, clear, and specific.",
           pronunciationNotes: role.pronunciationNotes || "",
-          provider: "mock",
-          rightsNotes: role.elevenLabsSearchQuery ? `Claude casting query: ${role.elevenLabsSearchQuery}` : "Claude-suggested role. Map to an ElevenLabs voice before production.",
+          provider: "elevenlabs",
+          providerVoiceId: "XB0fDUnXU5powFXDhCwa",
+          rightsNotes: role.elevenLabsSearchQuery ? `Claude casting query: ${role.elevenLabsSearchQuery}` : "ElevenLabs Irish voice assigned by default.",
         }))
       : parsedProject.voiceRoles;
 

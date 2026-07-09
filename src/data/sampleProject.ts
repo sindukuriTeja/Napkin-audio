@@ -52,7 +52,7 @@ export const defaultBrief = (): Brief => ({
   cta: "Wake up here",
   stationGroup: "irish-radio-generic",
   language: "English",
-  accentPreference: "soft Irish",
+  accentPreference: "Irish",
   brandVoiceNotes: "Warm, unhurried, intimate. Never shouty. Feels like a friend who already lives this way.",
   bannedPhrases: ["game changer", "revolutionary", "ultimate"],
   competitorReferences: "",

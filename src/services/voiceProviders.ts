@@ -158,7 +158,7 @@ export class NvidiaRivaProvider implements VoiceProvider {
 }
 
 export const getVoiceProvider = (config: VoiceProviderConfig): VoiceProvider => {
-  if (config.provider === "elevenlabs" && config.apiKey) return new ElevenLabsProvider(config);
+  if (config.provider === "elevenlabs") return new ElevenLabsProvider(config);
   if (config.provider === "nvidia-riva" && config.endpoint && config.apiKey) return new NvidiaRivaProvider(config);
-  return new MockVoiceProvider();
+  return new ElevenLabsProvider({ provider: "elevenlabs", defaultVoiceId: "XB0fDUnXU5powFXDhCwa" });
 };
