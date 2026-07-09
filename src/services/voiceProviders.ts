@@ -55,9 +55,9 @@ export const generateMockVoicePreviewBlob = (text: string, overrideDuration?: nu
   return new Blob([buffer], { type: "audio/wav" });
 };
 
-export const fetchSpokenTtsAudioBlob = async (text: string, langCode: string = "en"): Promise<Blob> => {
+export const fetchSpokenTtsAudioBlob = async (text: string, langCode: string = "en-IE"): Promise<Blob> => {
   try {
-    const cleanLang = langCode.split("-")[0];
+    const cleanLang = langCode;
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text.slice(0, 200))}&tl=${cleanLang}&client=tw-ob`;
     const response = await fetch(url);
     if (response.ok) {

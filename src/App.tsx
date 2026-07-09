@@ -118,6 +118,7 @@ const scriptLineTypes: ScriptLineType[] = [
 
 const durations = [10, 15, 20, 30, 40, 50, 60, 120];
 const accentOptions = [
+  "Irish",
   "Dublin",
   "Cork",
   "Galway / West",
