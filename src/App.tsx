@@ -1,6 +1,6 @@
 import { Mp3Encoder } from "@breezystack/lamejs";
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Sun, Moon, Mic, Music, Wand2, Sparkles, Volume2, Download, Play, ChevronRight, Radio, Headphones, Zap } from "lucide-react";
+import { Sun, Moon, Mic, Music, Wand2, Sparkles, Volume2, Download, Play, ChevronRight, Radio, Headphones, ArrowRight } from "lucide-react";
 import { ScriptParserAgent, SoundDesignAgent } from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { downloadBlob } from "./export/exportPackage";
@@ -342,16 +342,16 @@ export function App() {
       <header className="app-header">
         <div className="header-left">
           <div className="logo-mark">
-            <Radio size={20} />
+            <Radio size={16} />
           </div>
           <h1>Napkin Audio</h1>
-          <span className="header-badge">AI Studio</span>
+          <span className="header-badge">Studio</span>
         </div>
         <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === "dark" ? (
-            <Sun className="theme-toggle-icon" size={16} />
+            <Sun className="theme-toggle-icon" size={14} />
           ) : (
-            <Moon className="theme-toggle-icon" size={16} />
+            <Moon className="theme-toggle-icon" size={14} />
           )}
         </button>
       </header>
@@ -386,7 +386,7 @@ export function App() {
 
       {statusMessage && (
         <div className="status-bar">
-          <Sparkles size={14} />
+          <Sparkles size={12} />
           <span>{statusMessage}</span>
         </div>
       )}
@@ -394,47 +394,45 @@ export function App() {
       {step === "welcome" && (
         <div className="welcome-section">
           <div className="hero">
-            <div className="hero-glow" />
             <div className="hero-content">
               <h2 className="hero-title">
-                Create radio ads with <span className="gradient-text">AI-powered</span> audio production
+                Create radio ads with AI-powered audio production
               </h2>
               <p className="hero-subtitle">
                 Write a script, generate professional voices, add sound design, and export broadcast-ready audio — all in one place.
               </p>
               <button className="btn primary large" onClick={() => setStep("script")}>
-                <Zap size={18} />
-                Start Creating
-                <ChevronRight size={16} />
+                Get Started
+                <ArrowRight size={14} />
               </button>
             </div>
           </div>
 
           <div className="features-grid">
             <div className="feature-card">
-              <div className="feature-icon blue">
-                <Wand2 size={22} />
+              <div className="feature-icon">
+                <Wand2 size={18} />
               </div>
               <h3>AI Script Writing</h3>
               <p>Describe your ad and let AI generate a professional radio script with timing and roles.</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon purple">
-                <Mic size={22} />
+              <div className="feature-icon">
+                <Mic size={18} />
               </div>
               <h3>Voice Generation</h3>
               <p>Choose from expressive AI voices powered by ElevenLabs with multi-character support.</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon green">
-                <Music size={22} />
+              <div className="feature-icon">
+                <Music size={18} />
               </div>
               <h3>Sound Design</h3>
               <p>AI-generated sound effects and music beds that complement your script perfectly.</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon amber">
-                <Headphones size={22} />
+              <div className="feature-icon">
+                <Headphones size={18} />
               </div>
               <h3>Final Mix & Export</h3>
               <p>Mix all elements together and export broadcast-ready MP3 files in seconds.</p>
@@ -452,7 +450,7 @@ export function App() {
                 </div>
               </div>
               <div className="flow-arrow">
-                <ChevronRight size={16} />
+                <ChevronRight size={14} />
               </div>
               <div className="flow-step">
                 <div className="flow-number">2</div>
@@ -462,7 +460,7 @@ export function App() {
                 </div>
               </div>
               <div className="flow-arrow">
-                <ChevronRight size={16} />
+                <ChevronRight size={14} />
               </div>
               <div className="flow-step">
                 <div className="flow-number">3</div>
@@ -479,7 +477,7 @@ export function App() {
       {step === "script" && (
         <div className="step-content">
           <div className="section-header">
-            <Wand2 size={20} className="section-icon" />
+            <Wand2 size={16} className="section-icon" />
             <div>
               <h2 className="section-title">Script Editor</h2>
               <p className="section-desc">Write your script or describe the ad you want to create</p>
@@ -498,7 +496,7 @@ export function App() {
               <div className="textarea-footer">
                 <span className="char-count">{scriptDraft.length} characters</span>
                 <div className="textarea-icon">
-                  <Mic size={16} />
+                  <Mic size={12} />
                 </div>
               </div>
             </div>
@@ -508,7 +506,7 @@ export function App() {
                 onClick={handleGenerateAndAlign}
                 disabled={isGenerating || !scriptDraft.trim()}
               >
-                <Sparkles size={16} />
+                <Sparkles size={12} />
                 {isGenerating ? "Generating..." : "Generate with AI"}
               </button>
               <button
@@ -516,7 +514,7 @@ export function App() {
                 onClick={handleParseScript}
                 disabled={isGenerating || !scriptDraft.trim()}
               >
-                <Play size={16} />
+                <Play size={14} />
                 Parse & Continue
               </button>
             </div>
@@ -543,7 +541,7 @@ export function App() {
       {step === "voice" && (
         <div className="step-content">
           <div className="section-header">
-            <Mic size={20} className="section-icon" />
+            <Mic size={16} className="section-icon" />
             <div>
               <h2 className="section-title">Voice Generation</h2>
               <p className="section-desc">Generate AI voice takes for each character in your script</p>
@@ -558,14 +556,14 @@ export function App() {
                   className={ttsModel === "eleven_multilingual_v2" ? "active" : ""}
                   onClick={() => setTtsModel("eleven_multilingual_v2")}
                 >
-                  <Volume2 size={14} />
+                  <Volume2 size={12} />
                   v2 Stable
                 </button>
                 <button
                   className={ttsModel === "eleven_v3" ? "active" : ""}
                   onClick={() => setTtsModel("eleven_v3")}
                 >
-                  <Sparkles size={14} />
+                  <Sparkles size={12} />
                   v3 Expressive
                 </button>
               </div>
@@ -578,7 +576,7 @@ export function App() {
               onClick={handleGenerateVoiceTakes}
               disabled={isGeneratingVoice}
             >
-              <Mic size={16} />
+              <Mic size={14} />
               {isGeneratingVoice ? "Generating..." : "Generate All Voice Takes"}
             </button>
             <button
@@ -586,7 +584,7 @@ export function App() {
               onClick={handleGenerateFullSpot}
               disabled={isGeneratingFullSpot}
             >
-              <Download size={16} />
+              <Download size={12} />
               {isGeneratingFullSpot ? "Generating..." : "Export Full Spot MP3"}
             </button>
           </div>
@@ -611,7 +609,7 @@ export function App() {
 
           {project.voiceTakes.length === 0 && (
             <div className="empty-state">
-              <Volume2 size={40} />
+              <Volume2 size={24} />
               <p>No voice takes yet. Click "Generate All Voice Takes" to create AI-powered voice recordings for your script.</p>
             </div>
           )}
@@ -626,7 +624,7 @@ export function App() {
       {step === "sound-design" && (
         <div className="step-content">
           <div className="section-header">
-            <Music size={20} className="section-icon" />
+            <Music size={16} className="section-icon" />
             <div>
               <h2 className="section-title">Sound Design & Mix</h2>
               <p className="section-desc">Add music beds, sound effects, and render your final mix</p>
@@ -641,14 +639,14 @@ export function App() {
                   className={musicModel === "music_v1" ? "active" : ""}
                   onClick={() => setMusicModel("music_v1")}
                 >
-                  <Music size={14} />
+                  <Music size={12} />
                   v1 Stable
                 </button>
                 <button
                   className={musicModel === "music_v2" ? "active" : ""}
                   onClick={() => setMusicModel("music_v2")}
                 >
-                  <Sparkles size={14} />
+                  <Sparkles size={12} />
                   v2 Studio-Grade
                 </button>
               </div>
@@ -661,7 +659,7 @@ export function App() {
               onClick={handleAutoGenerateAll}
               disabled={isAutoGenerating}
             >
-              <Zap size={16} />
+              <Sparkles size={12} />
               {isAutoGenerating ? "Processing..." : "Auto Generate All & Mix"}
             </button>
             <button
@@ -669,7 +667,7 @@ export function App() {
               onClick={handleGenerateMixedPreview}
               disabled={isGeneratingMix}
             >
-              <Headphones size={16} />
+              <Headphones size={14} />
               {isGeneratingMix ? "Rendering..." : "Render Mix Only"}
             </button>
           </div>
@@ -684,7 +682,7 @@ export function App() {
                   a.download = "mixed-preview.mp3";
                   a.click();
                 }}>
-                  <Download size={14} />
+                  <Download size={12} />
                   Download
                 </button>
               </div>
@@ -694,7 +692,7 @@ export function App() {
 
           {!mixedAudioUrl && (
             <div className="empty-state">
-              <Headphones size={40} />
+              <Headphones size={24} />
               <p>Your final mixed audio will appear here. Use "Auto Generate All & Mix" for a one-click production workflow.</p>
             </div>
           )}
