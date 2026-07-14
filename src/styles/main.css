@@ -81,9 +81,10 @@ body {
 
 /* ─── App Layout ─── */
 .app-container {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem 6rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 2rem 3rem 4rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -291,7 +292,7 @@ body {
   color: var(--text);
   line-height: 1.15;
   letter-spacing: -0.04em;
-  max-width: 560px;
+  max-width: 720px;
   margin: 0 auto 1rem;
 }
 
@@ -307,14 +308,14 @@ body {
   font-size: 1rem;
   color: var(--text-secondary);
   line-height: 1.6;
-  max-width: 460px;
+  max-width: 600px;
   margin: 0 auto 2rem;
 }
 
 /* ─── Feature Cards Grid ─── */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
@@ -868,7 +869,7 @@ body {
 /* ─── Responsive ─── */
 @media (max-width: 640px) {
   .app-container {
-    padding: 2rem 1rem 4rem;
+    padding: 1.5rem 1rem 3rem;
   }
 
   .hero-title {
