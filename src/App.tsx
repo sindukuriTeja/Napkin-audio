@@ -1,5 +1,6 @@
 import { Mp3Encoder } from "@breezystack/lamejs";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Sun, Moon } from "lucide-react";
 import { ScriptParserAgent, SoundDesignAgent } from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { downloadBlob } from "./export/exportPackage";
@@ -19,6 +20,27 @@ import {
 } from "./services/providerProxy";
 import { generateMockVoicePreviewBlob } from "./services/voiceProviders";
 import type { Project, VoiceRole, VoiceTake, SoundCue, MusicCue } from "./types/models";
+
+type Theme = "light" | "dark";
+
+function useTheme(): [Theme, () => void] {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem("napkin-audio-ai-studio-theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("napkin-audio-ai-studio-theme", theme);
+  }, [theme]);
+
+  const toggle = useCallback(() => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  }, []);
+
+  return [theme, toggle];
+}
 
 type Step = "script" | "voice" | "sound-design";
 
@@ -52,6 +74,7 @@ function audioBufferToMp3(buffer: AudioBuffer, kbps = 192): Blob {
 }
 
 export function App() {
+  const [theme, toggleTheme] = useTheme();
   const [step, setStep] = useState<Step>("script");
   const [project, setProject] = useState<Project>(() => createProject());
   const [scriptDraft, setScriptDraft] = useState("");
@@ -311,13 +334,25 @@ export function App() {
 
   const parsedLines = project.script.lines;
 
+  const stepIndex = step === "script" ? 0 : step === "voice" ? 1 : 2;
+
   return (
     <div className="app-container">
       <header className="app-header">
         <h1>Napkin Audio AI Studio</h1>
+        <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === "dark" ? (
+            <Sun className="theme-toggle-icon" size={18} />
+          ) : (
+            <Moon className="theme-toggle-icon" size={18} />
+          )}
+          <span className="theme-toggle-label">{theme === "dark" ? "Light" : "Dark"}</span>
+        </button>
         <div className="step-indicator">
-          <span className={step === "script" ? "active" : ""}>1. Script</span>
-          <span className={step === "voice" ? "active" : ""}>2. Voice</span>
+          <span className={step === "script" ? "active" : stepIndex > 0 ? "completed" : ""}>1. Script</span>
+          <span className="step-connector" />
+          <span className={step === "voice" ? "active" : stepIndex > 1 ? "completed" : ""}>2. Voice</span>
+          <span className="step-connector" />
           <span className={step === "sound-design" ? "active" : ""}>3. Sound Design</span>
         </div>
       </header>
