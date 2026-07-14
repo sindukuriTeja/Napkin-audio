@@ -338,13 +338,14 @@ export function App() {
 
   return (
     <div className="app-container">
+      <div className="top-bar" />
       <header className="app-header">
         <h1>Napkin Audio AI Studio</h1>
         <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
           {theme === "dark" ? (
-            <Sun className="theme-toggle-icon" size={18} />
+            <Sun className="theme-toggle-icon" size={16} />
           ) : (
-            <Moon className="theme-toggle-icon" size={18} />
+            <Moon className="theme-toggle-icon" size={16} />
           )}
           <span className="theme-toggle-label">{theme === "dark" ? "Light" : "Dark"}</span>
         </button>
@@ -362,13 +363,18 @@ export function App() {
       {step === "script" && (
         <div className="step-content">
           <div className="input-section">
-            <textarea
-              className="script-textarea"
-              placeholder="Paste your script here, or describe the ad you want to create (product, audience, tone, duration)..."
-              value={scriptDraft}
-              onChange={(e) => setScriptDraft(e.target.value)}
-              disabled={isGenerating}
-            />
+            <div className="textarea-wrapper">
+              <textarea
+                className="script-textarea"
+                placeholder="Paste your script here, or describe the ad you want to create (product, audience, tone, duration)..."
+                value={scriptDraft}
+                onChange={(e) => setScriptDraft(e.target.value)}
+                disabled={isGenerating}
+              />
+              <div className="textarea-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+            </div>
             <div className="button-row">
               <button
                 className="btn primary"
@@ -392,8 +398,8 @@ export function App() {
               <h3>Parsed Lines</h3>
               {parsedLines.map((line) => (
                 <div key={line.id} className="parsed-line">
-                  <span className="line-type">{line.type}</span>
-                  <span className="line-speaker">{line.speaker || "—"}</span>
+                  <span className="line-type" data-type={line.type}>{line.type}</span>
+                  <span className="line-speaker" data-speaker={line.speaker || ""}>{line.speaker || "—"}</span>
                   <span className="line-text">{line.text}</span>
                 </div>
               ))}
