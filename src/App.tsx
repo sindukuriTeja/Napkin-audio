@@ -1,6 +1,6 @@
 import { Mp3Encoder } from "@breezystack/lamejs";
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Sun, Moon, Mic, Music, Wand2, Sparkles, Volume2, Download, Play, ChevronRight, Radio, Headphones, ArrowRight } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Sun, Moon, Mic, Music, Wand2, Sparkles, Volume2, Download, Play, ChevronRight, Radio, Headphones, ArrowRight, Upload } from "lucide-react";
 import { ScriptParserAgent, SoundDesignAgent } from "./agents/studioAgents";
 import { createProject, recomputeProject, updateScriptFromText } from "./data/sampleProject";
 import { downloadBlob } from "./export/exportPackage";
@@ -87,6 +87,22 @@ export function App() {
   const [isGeneratingMix, setIsGeneratingMix] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [mixedAudioUrl, setMixedAudioUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result;
+      if (typeof text === "string") {
+        setScriptDraft(text);
+        setStatusMessage(`Loaded "${file.name}" (${text.length} characters)`);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   const scriptTextFromLlmPlan = (plan: LlmProductionPlan) =>
     plan.scriptLines
@@ -517,6 +533,21 @@ export function App() {
                 <Play size={14} />
                 Parse & Continue
               </button>
+              <button
+                className="btn secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isGenerating}
+              >
+                <Upload size={14} />
+                Upload Script
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.md"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
+              />
             </div>
           </div>
 
